@@ -4,7 +4,7 @@ import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { db } from "@/lib/firestore";
+import { requireDb } from "@/lib/db";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { Auction } from "@/types/auction";
 
@@ -18,6 +18,7 @@ export default function AuctionList() {
   }, []);
 
   useEffect(() => {
+    const db = requireDb();
     const auctionsQuery = query(collection(db, "auctions"), where("status", "==", "live"));
     const unsubscribe = onSnapshot(auctionsQuery, (snap) => {
       const list = snap.docs.map((docSnap) => ({

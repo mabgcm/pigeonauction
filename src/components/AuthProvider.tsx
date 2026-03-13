@@ -8,7 +8,7 @@ import {
   type User
 } from "firebase/auth";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { auth } from "@/lib/auth";
+import { getAuthClient } from "@/lib/auth";
 import { upsertUserProfile } from "@/lib/users";
 
 export type AuthUser = Pick<User, "uid" | "email" | "displayName" | "photoURL">;
@@ -27,6 +27,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const auth = getAuthClient();
+    if (!auth) return;
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
         const { uid, email, displayName, photoURL } = currentUser;
@@ -46,10 +48,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       loading,
       signInWithGoogle: async () => {
+        const auth = getAuthClient();
+        if (!auth) return;
         const provider = new GoogleAuthProvider();
         await signInWithPopup(auth, provider);
       },
       signOutUser: async () => {
+        const auth = getAuthClient();
+        if (!auth) return;
         await signOut(auth);
       }
     }),

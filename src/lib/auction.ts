@@ -10,10 +10,10 @@ import {
   where,
   type Unsubscribe
 } from "firebase/firestore";
-import { db } from "@/lib/firestore";
+import { requireDb } from "@/lib/db";
 import type { Auction, Bid } from "@/types/auction";
 
-export const auctionRef = (id: string) => doc(db, "auctions", id);
+export const auctionRef = (id: string) => doc(requireDb(), "auctions", id);
 
 export function listenToAuction(id: string, onChange: (auction: Auction | null) => void): Unsubscribe {
   return onSnapshot(auctionRef(id), (snap) => {
@@ -26,6 +26,7 @@ export function listenToAuction(id: string, onChange: (auction: Auction | null) 
 }
 
 export function listenToBids(auctionId: string, onChange: (bids: Bid[]) => void): Unsubscribe {
+  const db = requireDb();
   const bidsQuery = query(collection(db, "bids"), where("auction_id", "==", auctionId));
   return onSnapshot(bidsQuery, (snap) => {
     const list = snap.docs.map((docSnap) => ({
@@ -59,6 +60,7 @@ export async function placeBid(params: {
 }) {
   const { auctionId, userId, amount, userName } = params;
 
+  const db = requireDb();
   await runTransaction(db, async (tx) => {
     const ref = auctionRef(auctionId);
     const snap = await tx.get(ref);

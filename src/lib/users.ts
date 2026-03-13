@@ -1,5 +1,5 @@
 import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firestore";
+import { requireDb } from "@/lib/db";
 import type { UserProfile } from "@/types/auction";
 
 export async function upsertUserProfile(user: {
@@ -7,6 +7,7 @@ export async function upsertUserProfile(user: {
   email: string | null;
   displayName: string | null;
 }) {
+  const db = requireDb();
   const ref = doc(db, "users", user.uid);
   const payload: Partial<UserProfile> = {
     id: user.uid,
@@ -28,6 +29,7 @@ export async function upsertUserProfile(user: {
 }
 
 export async function getUserProfile(userId: string) {
+  const db = requireDb();
   const ref = doc(db, "users", userId);
   const snap = await getDoc(ref);
   if (!snap.exists()) return null;
@@ -35,6 +37,7 @@ export async function getUserProfile(userId: string) {
 }
 
 export async function updateUserProfileName(userId: string, name: string) {
+  const db = requireDb();
   const ref = doc(db, "users", userId);
   await updateDoc(ref, { name, updated_at: serverTimestamp() });
 }

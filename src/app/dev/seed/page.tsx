@@ -2,7 +2,7 @@
 
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { useState } from "react";
-import { db } from "@/lib/firestore";
+import { requireDb } from "@/lib/db";
 import { useAuth } from "@/components/AuthProvider";
 
 export default function SeedPage() {
@@ -15,6 +15,7 @@ export default function SeedPage() {
       return;
     }
     setStatus("Creating...");
+    const db = requireDb();
     const now = new Date();
     const end = new Date(now.getTime() + 1000 * 60 * 60 * 6);
     const payload = {
