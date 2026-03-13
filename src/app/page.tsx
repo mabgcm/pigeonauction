@@ -29,13 +29,14 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="grid gap-4 rounded-2xl border border-neutral-200 bg-neutral-50 p-6">
-        <h2 className="text-xl font-semibold text-neutral-800">Next steps</h2>
-        <ul className="list-disc pl-5 text-neutral-700">
-          <li>Create a sample auction from the Seed page.</li>
-          <li>Open the auction and place bids in real time.</li>
-          <li>Integrate identity verification before enabling live payments.</li>
-        </ul>
+      <section className="grid gap-4 rounded-2xl border border-white/60 bg-white/70 p-6 shadow-[0_12px_36px_rgba(15,23,42,0.08)] backdrop-blur">
+        <h2 className="text-xl font-semibold text-neutral-800">Welcome testers</h2>
+        <p className="text-neutral-700">
+          This is a live demo of our pigeon auction platform. You can browse listings, open a pigeon page,
+          and place bids to see real-time updates. Everyone stays anonymous, and the platform handles the
+          flow from listing to sale. Use the Seed page to create a sample auction and explore the full
+          bidding experience.
+        </p>
       </section>
     </main>
   );
