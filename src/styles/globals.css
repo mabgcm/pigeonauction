@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  font-family: var(--font-body), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  background: radial-gradient(circle at top, #f9f5ef 0%, #f4efe6 45%, #efe8da 100%);
+  color: #1a1a1a;
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+}

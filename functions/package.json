@@ -1,0 +1,25 @@
+{
+  "name": "functions",
+  "private": true,
+  "main": "lib/index.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "serve": "firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions",
+    "lint": "eslint --ext .ts src",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "firebase-admin": "12.5.0",
+    "firebase-functions": "4.7.0"
+  },
+  "devDependencies": {
+    "typescript": "5.5.4",
+    "eslint": "8.57.0",
+    "@typescript-eslint/eslint-plugin": "7.15.0",
+    "@typescript-eslint/parser": "7.15.0"
+  }
+}
