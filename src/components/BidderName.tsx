@@ -12,7 +12,7 @@ export default function BidderName({ userId, fallback }: { userId: string; fallb
       if (!userId) return;
       const profile = await getUserProfile(userId);
       if (!isMounted) return;
-      if (profile?.name) setName(profile.name);
+      if (profile?.anonymous_name) setName(profile.anonymous_name);
     }
     load();
     return () => {

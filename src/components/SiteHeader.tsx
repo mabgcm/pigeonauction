@@ -2,11 +2,30 @@
 
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getUserProfile } from "@/lib/users";
 
 export default function SiteHeader() {
   const { user, loading, signInWithGoogle, signOutUser } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    async function loadProfile() {
+      if (!user) {
+        setIsAdmin(false);
+        return;
+      }
+      const profile = await getUserProfile(user.uid);
+      if (!active) return;
+      setIsAdmin(profile?.role === "admin");
+    }
+    loadProfile();
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/60 bg-white/80 backdrop-blur">
@@ -19,12 +38,17 @@ export default function SiteHeader() {
             <Link href="/auctions" className="hover:text-neutral-900">
               Auctions
             </Link>
+            <Link href="/auctions/new" className="hover:text-neutral-900">
+              Sell
+            </Link>
             <Link href="/profile" className="hover:text-neutral-900">
               Profile
             </Link>
-            <Link href="/dev/seed" className="hover:text-neutral-900">
-              Seed
-            </Link>
+            {isAdmin && (
+              <Link href="/admin" className="hover:text-neutral-900">
+                Admin
+              </Link>
+            )}
           </nav>
         </div>
         <div className="flex items-center gap-3 text-sm">
@@ -79,12 +103,17 @@ export default function SiteHeader() {
           <Link href="/auctions" className="text-sm font-semibold text-neutral-800">
             Auctions
           </Link>
+          <Link href="/auctions/new" className="text-sm font-semibold text-neutral-800">
+            Sell
+          </Link>
           <Link href="/profile" className="text-sm font-semibold text-neutral-800">
             Profile
           </Link>
-          <Link href="/dev/seed" className="text-sm font-semibold text-neutral-800">
-            Seed
-          </Link>
+          {isAdmin && (
+            <Link href="/admin" className="text-sm font-semibold text-neutral-800">
+              Admin
+            </Link>
+          )}
           <div className="mt-2 rounded-2xl border border-neutral-200 bg-white p-4 text-sm">
             {loading ? (
               <span className="text-neutral-500">Loading...</span>

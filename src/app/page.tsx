@@ -34,7 +34,7 @@ export default function Home() {
         <p className="text-neutral-700">
           This is a live demo of our pigeon auction platform. You can browse listings, open a pigeon page,
           and place bids to see real-time updates. Everyone stays anonymous, and the platform handles the
-          flow from listing to sale. Use the Seed page to create a sample auction and explore the full
+          flow from listing to sale. Create an account to list a pigeon or place bids and explore the full
           bidding experience.
         </p>
       </section>

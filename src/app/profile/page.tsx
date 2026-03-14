@@ -6,7 +6,9 @@ export default function ProfilePage() {
       <header className="space-y-2">
         <p className="text-xs uppercase tracking-[0.3em] text-neutral-400">Profile</p>
         <h1 className="text-3xl font-semibold text-neutral-900">Your account</h1>
-        <p className="text-neutral-600">Manage your display name for auctions and bids.</p>
+        <p className="text-neutral-600">
+          Choose your role, provide verification details, and view your anonymous username.
+        </p>
       </header>
       <ProfileForm />
     </main>

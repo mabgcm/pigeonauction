@@ -3,7 +3,6 @@
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { requireDb } from "@/lib/db";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { Auction } from "@/types/auction";
@@ -35,7 +34,7 @@ export default function AuctionList() {
     <div className="grid gap-6">
       {auctions.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-neutral-300 bg-white/70 p-6 text-neutral-600 shadow-sm">
-          No live auctions yet. Seed a sample auction to get started.
+          No live auctions yet. Be the first to list a pigeon.
         </p>
       ) : (
         auctions.map((auction) => {
@@ -57,12 +56,15 @@ export default function AuctionList() {
               className="group grid overflow-hidden rounded-3xl border border-white/40 bg-white/70 shadow-[0_10px_30px_rgba(15,23,42,0.08)] backdrop-blur transition hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(15,23,42,0.12)] md:grid-cols-[200px_1fr]"
             >
               <div className="relative h-40 w-full md:h-full">
-                <Image
-                  src="/images/pigeon.jpg"
+                <img
+                  src={
+                    auction.pigeon_photos && auction.pigeon_photos.length > 0
+                      ? auction.pigeon_photos[0]
+                      : "/images/pigeon.jpg"
+                  }
                   alt="Pigeon"
-                  fill
-                  className="object-cover transition duration-500 group-hover:scale-105"
-                  sizes="(max-width: 768px) 100vw, 200px"
+                  className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                  loading="lazy"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/5 to-transparent" />
               </div>

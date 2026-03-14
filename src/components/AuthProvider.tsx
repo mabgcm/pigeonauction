@@ -9,7 +9,8 @@ import {
 } from "firebase/auth";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { getAuthClient } from "@/lib/auth";
-import { upsertUserProfile } from "@/lib/users";
+import { getUserProfile, upsertUserProfile } from "@/lib/users";
+import { usePathname, useRouter } from "next/navigation";
 
 export type AuthUser = Pick<User, "uid" | "email" | "displayName" | "photoURL">;
 
@@ -25,6 +26,8 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     const auth = getAuthClient();
@@ -33,7 +36,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (currentUser) {
         const { uid, email, displayName, photoURL } = currentUser;
         setUser({ uid, email, displayName, photoURL });
-        upsertUserProfile({ uid, email, displayName }).catch(() => undefined);
+        (async () => {
+          await upsertUserProfile({ uid, email, displayName });
+          const profile = await getUserProfile(uid);
+          if (profile && !profile.onboarding_complete && pathname !== "/profile") {
+            router.push("/profile");
+          }
+        })().catch(() => undefined);
       } else {
         setUser(null);
       }

@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import Image from "next/image";
-
 const fallbackImages = ["/images/pigeon.jpg", "/images/pigeon.jpg", "/images/pigeon.jpg"];
 
 export default function PigeonGalleryModal({
@@ -41,12 +39,11 @@ export default function PigeonGalleryModal({
       </button>
       <div className="relative w-full max-w-4xl overflow-hidden rounded-3xl bg-black">
         <div className="relative h-[60vh] w-full">
-          <Image
+          <img
             src={images[activeIndex]}
             alt="Pigeon"
-            fill
-            className="object-cover"
-            sizes="100vw"
+            className="h-full w-full object-cover"
+            loading="lazy"
           />
         </div>
         <div className="flex items-center justify-between gap-4 bg-black/80 p-4 text-white">

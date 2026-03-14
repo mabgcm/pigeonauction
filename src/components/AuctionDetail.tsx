@@ -4,11 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { listenToAuction, listenToBids, getNextMinimumBid, placeBid } from "@/lib/auction";
 import { useAuth } from "@/components/AuthProvider";
 import { formatCurrency, formatDate } from "@/lib/format";
-import type { Auction, Bid } from "@/types/auction";
+import type { Auction, AuctionQuestion, Bid } from "@/types/auction";
 import BidderName from "@/components/BidderName";
 import { getUserProfile } from "@/lib/users";
-import Image from "next/image";
 import PigeonGalleryModal from "@/components/PigeonGalleryModal";
+import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp } from "firebase/firestore";
+import { requireDb } from "@/lib/db";
 
 export default function AuctionDetail({ auctionId }: { auctionId: string }) {
   const [auction, setAuction] = useState<Auction | null>(null);
@@ -18,9 +19,17 @@ export default function AuctionDetail({ auctionId }: { auctionId: string }) {
   const [submitting, setSubmitting] = useState(false);
   const { user } = useAuth();
   const [profileName, setProfileName] = useState<string>("");
+  const [isVerified, setIsVerified] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+  const [role, setRole] = useState<"buyer" | "seller" | "admin">("buyer");
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [now, setNow] = useState<Date>(new Date());
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
+  const [questions, setQuestions] = useState<AuctionQuestion[]>([]);
+  const [questionText, setQuestionText] = useState("");
+  const [questionStatus, setQuestionStatus] = useState<string | null>(null);
+  const [isBanned, setIsBanned] = useState(false);
 
   useEffect(() => {
     const unsubAuction = listenToAuction(auctionId, setAuction);
@@ -35,15 +44,47 @@ export default function AuctionDetail({ auctionId }: { auctionId: string }) {
     let isMounted = true;
     async function loadProfile() {
       if (!user) return;
+      setLoadingProfile(true);
       const profile = await getUserProfile(user.uid);
       if (!isMounted) return;
-      setProfileName(profile?.name || user.displayName || user.email || "");
+      setProfileName(profile?.anonymous_name || "Pigeon-XXXX");
+      setIsVerified(profile?.verification_status === "approved");
+      setIsBanned(Boolean(profile?.banned));
+      setRole(profile?.role || "buyer");
+      setOnboardingComplete(Boolean(profile?.onboarding_complete));
+      setLoadingProfile(false);
     }
     loadProfile();
     return () => {
       isMounted = false;
     };
   }, [user]);
+
+  useEffect(() => {
+    if (user) return;
+    setProfileName("");
+    setIsVerified(false);
+    setIsBanned(false);
+    setRole("buyer");
+    setOnboardingComplete(false);
+    setLoadingProfile(false);
+  }, [user]);
+
+  useEffect(() => {
+    const db = requireDb();
+    const questionsQuery = query(
+      collection(db, "auctions", auctionId, "questions"),
+      orderBy("created_at", "desc")
+    );
+    const unsubscribe = onSnapshot(questionsQuery, (snap) => {
+      const rows = snap.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...(docSnap.data() as Omit<AuctionQuestion, "id">)
+      }));
+      setQuestions(rows);
+    });
+    return () => unsubscribe();
+  }, [auctionId]);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
@@ -73,7 +114,16 @@ export default function AuctionDetail({ auctionId }: { auctionId: string }) {
   }, [auctionEnd, timeRemainingMs]);
 
   async function handleBid() {
-    if (!auction || !user) return;
+    if (
+      !auction ||
+      !user ||
+      !isVerified ||
+      isBanned ||
+      !onboardingComplete ||
+      role !== "buyer" ||
+      auction.status !== "live"
+    )
+      return;
     setError(null);
     setSubmitting(true);
 
@@ -99,7 +149,12 @@ export default function AuctionDetail({ auctionId }: { auctionId: string }) {
     );
   }
 
-  const galleryImages = ["/images/pigeon.jpg", "/images/pigeon.jpg", "/images/pigeon.jpg"];
+  const galleryImages =
+    auction.pigeon_photos && auction.pigeon_photos.length > 0
+      ? auction.pigeon_photos
+      : ["/images/pigeon.jpg"];
+  const isPending = auction.status === "pending";
+  const isLive = auction.status === "live";
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1.4fr_0.6fr]">
@@ -110,7 +165,12 @@ export default function AuctionDetail({ auctionId }: { auctionId: string }) {
             onClick={() => setGalleryOpen(true)}
             className="relative block h-64 w-full text-left"
           >
-            <Image src="/images/pigeon.jpg" alt="Pigeon" fill className="object-cover" priority />
+            <img
+              src={galleryImages[0]}
+              alt="Pigeon"
+              className="h-full w-full object-cover"
+              loading="eager"
+            />
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
             <span className="absolute bottom-4 left-4 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-neutral-900">
               View photos
@@ -187,6 +247,18 @@ export default function AuctionDetail({ auctionId }: { auctionId: string }) {
           <p className="text-sm text-emerald-700">
             Bidding is closed. This auction finished at {formatCurrency(auction.current_price)}.
           </p>
+        ) : isPending ? (
+          <p className="text-sm text-amber-700">Awaiting admin approval before bidding opens.</p>
+        ) : loadingProfile ? (
+          <p className="text-sm text-neutral-600">Checking verification status...</p>
+        ) : isBanned ? (
+          <p className="text-sm text-rose-700">Your account is banned from bidding.</p>
+        ) : !onboardingComplete ? (
+          <p className="text-sm text-amber-700">Complete your profile to bid.</p>
+        ) : role !== "buyer" ? (
+          <p className="text-sm text-amber-700">Only buyer accounts can place bids.</p>
+        ) : user && !isVerified ? (
+          <p className="text-sm text-amber-700">Verification required to place bids.</p>
         ) : (
           <p className="text-sm text-neutral-600">Minimum next bid: {formatCurrency(minBid)}</p>
         )}
@@ -195,22 +267,102 @@ export default function AuctionDetail({ auctionId }: { auctionId: string }) {
           onChange={(event) => setAmount(event.target.value)}
           placeholder={`Enter ${formatCurrency(minBid)} or more`}
           className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
-          disabled={isEnded}
+          disabled={
+            isEnded || !isVerified || isBanned || !isLive || !onboardingComplete || role !== "buyer"
+          }
         />
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button
           onClick={handleBid}
-          disabled={!user || submitting || isEnded}
+          disabled={
+            !user ||
+            submitting ||
+            isEnded ||
+            !isVerified ||
+            isBanned ||
+            !isLive ||
+            !onboardingComplete ||
+            role !== "buyer"
+          }
           className="w-full rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-400"
         >
           {isEnded
             ? "Auction ended"
             : user
-              ? submitting
-                ? "Placing bid..."
-                : "Place bid"
+              ? isPending
+                ? "Awaiting approval"
+                : isBanned
+                  ? "Account banned"
+                  : !onboardingComplete
+                    ? "Complete profile"
+                    : role !== "buyer"
+                      ? "Buyer only"
+                      : !isVerified
+                        ? "Verification required"
+                        : submitting
+                          ? "Placing bid..."
+                          : "Place bid"
               : "Sign in to bid"}
         </button>
+      </div>
+      <div className="space-y-4 rounded-3xl border border-white/60 bg-white/85 p-6 shadow-[0_12px_32px_rgba(15,23,42,0.1)] backdrop-blur">
+        <h2 className="text-lg font-semibold text-neutral-900">Questions</h2>
+        <p className="text-sm text-neutral-500">
+          Ask the seller about lineage, racing history, or health details. Admins will reply.
+        </p>
+        {user ? (
+          <div className="space-y-2">
+            <textarea
+              value={questionText}
+              onChange={(event) => setQuestionText(event.target.value)}
+              placeholder="Ask a question about this pigeon..."
+              className="min-h-[90px] w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
+              disabled={isBanned}
+            />
+            <button
+              onClick={async () => {
+                if (!user || isBanned) return;
+                if (questionText.trim().length < 5) {
+                  setQuestionStatus("Question must be at least 5 characters.");
+                  return;
+                }
+                const db = requireDb();
+                await addDoc(collection(db, "auctions", auctionId, "questions"), {
+                  auction_id: auctionId,
+                  user_id: user.uid,
+                  question: questionText.trim(),
+                  created_at: new Date().toISOString(),
+                  created_at_server: serverTimestamp()
+                });
+                setQuestionText("");
+                setQuestionStatus("Question sent.");
+              }}
+              className="rounded-full bg-neutral-900 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-neutral-400"
+              disabled={isBanned}
+            >
+              Submit question
+            </button>
+            {questionStatus && <p className="text-xs text-neutral-500">{questionStatus}</p>}
+          </div>
+        ) : (
+          <p className="text-sm text-neutral-600">Sign in to ask a question.</p>
+        )}
+        <div className="space-y-3">
+          {questions.length === 0 ? (
+            <p className="text-sm text-neutral-500">No questions yet.</p>
+          ) : (
+            questions.map((item) => (
+              <div key={item.id} className="rounded-2xl border border-neutral-200 bg-white p-4 text-sm">
+                <p className="font-medium text-neutral-900">{item.question}</p>
+                {item.answer ? (
+                  <p className="mt-2 text-sm text-emerald-700">Admin answer: {item.answer}</p>
+                ) : (
+                  <p className="mt-2 text-xs text-neutral-400">Awaiting admin response.</p>
+                )}
+              </div>
+            ))
+          )}
+        </div>
       </div>
       <PigeonGalleryModal
         isOpen={galleryOpen}
