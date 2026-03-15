@@ -18,8 +18,9 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata = {
-  title: "Pigeon Auction",
-  description: "Realtime pigeon auction platform"
+  title: "PigeonBid.ca – Canada Racing Pigeon Auctions",
+  description:
+    "Verified buyers & sellers • Zero buyer fees • 100% Guarantee for Premium members • Low tiered seller commissions"
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

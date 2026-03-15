@@ -9,6 +9,7 @@ import { getUserProfile } from "@/lib/users";
 type Tab = {
   href: string;
   label: string;
+  icon: "home" | "auctions" | "sell" | "profile" | "admin";
 };
 
 export default function MobileTabBar() {
@@ -34,13 +35,13 @@ export default function MobileTabBar() {
   }, [user]);
 
   const tabs: Tab[] = [
-    { href: "/auctions", label: "Auctions" },
-    { href: "/auctions/new", label: "Sell" },
-    { href: "/profile", label: "Profile" }
+    { href: "/", label: "Home", icon: "home" },
+    { href: "/auctions", label: "Auctions", icon: "auctions" },
+    { href: "/auctions/new", label: "Sell", icon: "sell" }
   ];
 
   if (isAdmin) {
-    tabs.push({ href: "/admin", label: "Admin" });
+    tabs.push({ href: "/admin", label: "Admin", icon: "admin" });
   }
 
   return (
@@ -57,10 +58,39 @@ export default function MobileTabBar() {
               }`}
             >
               <span
-                className={`h-1.5 w-1.5 rounded-full ${
-                  active ? "bg-neutral-900" : "bg-neutral-300"
+                className={`flex h-9 w-9 items-center justify-center rounded-2xl ${
+                  active ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"
                 }`}
-              />
+              >
+                {tab.icon === "home" && (
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M3 10.5L12 3l9 7.5V21a1 1 0 0 1-1 1h-6v-6H10v6H4a1 1 0 0 1-1-1v-10.5Z" />
+                  </svg>
+                )}
+                {tab.icon === "auctions" && (
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="4" width="18" height="14" rx="2" />
+                    <path d="M7 8h10M7 12h6" />
+                  </svg>
+                )}
+                {tab.icon === "sell" && (
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                )}
+                {tab.icon === "profile" && (
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="8" r="4" />
+                    <path d="M4 21a8 8 0 0 1 16 0" />
+                  </svg>
+                )}
+                {tab.icon === "admin" && (
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 2 3 6v6c0 5 4 9 9 10 5-1 9-5 9-10V6l-9-4Z" />
+                    <path d="M9 12h6" />
+                  </svg>
+                )}
+              </span>
               <span>{tab.label}</span>
             </Link>
           );

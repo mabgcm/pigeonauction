@@ -32,7 +32,7 @@ export default function SiteHeader() {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <div className="flex items-center gap-6">
           <Link href="/" className="text-lg font-semibold text-neutral-900">
-            PigeonAuction
+            PigeonBid.ca
           </Link>
           <nav className="hidden items-center gap-4 text-sm text-neutral-600 md:flex">
             <Link href="/auctions" className="hover:text-neutral-900">
@@ -40,9 +40,6 @@ export default function SiteHeader() {
             </Link>
             <Link href="/auctions/new" className="hover:text-neutral-900">
               Sell
-            </Link>
-            <Link href="/profile" className="hover:text-neutral-900">
-              Profile
             </Link>
             {isAdmin && (
               <Link href="/admin" className="hover:text-neutral-900">
@@ -57,7 +54,9 @@ export default function SiteHeader() {
               <span className="text-neutral-500">Loading...</span>
             ) : user ? (
               <>
-                <span className="text-neutral-600">{user.displayName ?? user.email}</span>
+                <Link href="/profile" className="text-neutral-600 hover:text-neutral-900">
+                  {user.displayName ?? user.email}
+                </Link>
                 <button
                   onClick={signOutUser}
                   className="rounded-full border border-neutral-300 px-3 py-1 text-neutral-700 hover:border-neutral-400"
@@ -78,12 +77,17 @@ export default function SiteHeader() {
             {loading ? (
               <span className="text-xs text-neutral-500">Loading...</span>
             ) : user ? (
-              <button
-                onClick={signOutUser}
-                className="rounded-full border border-neutral-300 px-3 py-1 text-xs font-semibold text-neutral-700 hover:border-neutral-400"
-              >
-                Sign out
-              </button>
+              <div className="flex items-center gap-2">
+                <Link href="/profile" className="text-xs font-semibold text-neutral-700 hover:text-neutral-900">
+                  {user.displayName ?? user.email}
+                </Link>
+                <button
+                  onClick={signOutUser}
+                  className="rounded-full border border-neutral-300 px-3 py-1 text-xs font-semibold text-neutral-700 hover:border-neutral-400"
+                >
+                  Sign out
+                </button>
+              </div>
             ) : (
               <button
                 onClick={signInWithGoogle}

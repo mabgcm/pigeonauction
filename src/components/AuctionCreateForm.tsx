@@ -21,7 +21,7 @@ export default function AuctionCreateForm() {
 
   const [pigeonName, setPigeonName] = useState("");
   const [description, setDescription] = useState("");
-  const [pedigree, setPedigree] = useState("");
+  const [pedigreeFile, setPedigreeFile] = useState<File | null>(null);
   const [startingPrice, setStartingPrice] = useState("200");
   const [endDateTime, setEndDateTime] = useState(() => {
     const now = new Date();
@@ -109,7 +109,7 @@ export default function AuctionCreateForm() {
       seller_id: user.uid,
       pigeon_name: pigeonName.trim(),
       description: description.trim(),
-      pedigree_info: pedigree.trim(),
+      pedigree_info: "",
       pigeon_photos: fallbackPhotos,
       starting_price: startPrice,
       current_price: startPrice,
@@ -138,11 +138,25 @@ export default function AuctionCreateForm() {
       await updateDoc(auctionRef, { pigeon_photos: uploads });
     }
 
+    if (pedigreeFile) {
+      const storage = getStorageClient();
+      if (!storage) {
+        setStatus("Storage is not available in this environment.");
+        setSubmitting(false);
+        return;
+      }
+      const safeName = pedigreeFile.name.replace(/\s+/g, "-");
+      const pedigreeRef = ref(storage, `pedigree/${user.uid}/${auctionRef.id}/${safeName}`);
+      await uploadBytes(pedigreeRef, pedigreeFile);
+      const pedigreeUrl = await getDownloadURL(pedigreeRef);
+      await updateDoc(auctionRef, { pedigree_info: pedigreeUrl });
+    }
+
     setSubmitting(false);
     setStatus("Auction created and submitted for approval.");
     setPigeonName("");
     setDescription("");
-    setPedigree("");
+    setPedigreeFile(null);
     setPhotoFiles([]);
   }
 
@@ -201,11 +215,12 @@ export default function AuctionCreateForm() {
           />
         </label>
         <label className="text-xs uppercase tracking-wide text-neutral-500 md:col-span-2">
-          Pedigree info (optional)
-          <textarea
-            value={pedigree}
-            onChange={(e) => setPedigree(e.target.value)}
-            className="mt-1 min-h-[80px] w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
+          Pedigree file (optional)
+          <input
+            type="file"
+            accept=".pdf,image/*"
+            onChange={(event) => setPedigreeFile(event.target.files?.[0] ?? null)}
+            className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
           />
         </label>
         <label className="text-xs uppercase tracking-wide text-neutral-500 md:col-span-2">
