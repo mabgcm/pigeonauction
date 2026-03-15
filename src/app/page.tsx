@@ -11,7 +11,7 @@ export default function Home() {
           Real-time, verified pigeon auctions in Canada
         </h1>
         <p className="text-lg text-neutral-600">
-          Anonymous marketplace with verified buyers and sellers, real-time bids, and admin-approved listings.
+          Anonymous marketplace with verified users, real-time bids, and admin-approved listings.
         </p>
         <div className="flex flex-wrap gap-3">
           <Link
@@ -33,9 +33,8 @@ export default function Home() {
         <h2 className="text-xl font-semibold text-neutral-800">How the platform works</h2>
         <p className="text-neutral-700">
           This platform runs verified pigeon auctions while keeping everyone anonymous. When you sign in,
-          you receive a system-assigned anonymous username that can’t be edited or searched. You then pick
-          a buyer or seller role and complete the required verification details so admins can approve you
-          to bid or list pigeons.
+          you receive a system-assigned anonymous username that can’t be edited or searched. You then
+          complete the required verification details so admins can approve you to bid or list pigeons.
         </p>
         <p className="text-neutral-700">
           Sellers create auctions with a starting price, photos, and an end date/time. Each listing is

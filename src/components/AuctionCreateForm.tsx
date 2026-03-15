@@ -15,7 +15,6 @@ export default function AuctionCreateForm() {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [isVerified, setIsVerified] = useState(false);
   const [isBanned, setIsBanned] = useState(false);
-  const [role, setRole] = useState<"buyer" | "seller" | "admin">("buyer");
   const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -43,7 +42,6 @@ export default function AuctionCreateForm() {
       if (!isMounted) return;
       setIsVerified(profile?.verification_status === "approved");
       setIsBanned(Boolean(profile?.banned));
-      setRole(profile?.role || "buyer");
       setOnboardingComplete(Boolean(profile?.onboarding_complete));
       setLoadingProfile(false);
     }
@@ -81,10 +79,6 @@ export default function AuctionCreateForm() {
     }
     if (!onboardingComplete) {
       setStatus("Complete your profile before listing.");
-      return;
-    }
-    if (role !== "seller") {
-      setStatus("Only seller accounts can list auctions.");
       return;
     }
     if (pigeonName.trim().length < 2) {
@@ -158,10 +152,8 @@ export default function AuctionCreateForm() {
         <p className="text-sm text-neutral-600">Sign in to list your pigeon.</p>
       ) : loadingProfile ? (
         <p className="text-sm text-neutral-600">Checking verification status...</p>
-      ) : isVerified && role === "seller" ? (
-        <p className="text-sm text-emerald-700">Verified seller account.</p>
-      ) : role !== "seller" ? (
-        <p className="text-sm text-amber-700">Only seller accounts can list auctions.</p>
+      ) : isVerified ? (
+        <p className="text-sm text-emerald-700">Verified account.</p>
       ) : !onboardingComplete ? (
         <p className="text-sm text-amber-700">Complete your profile before listing.</p>
       ) : isBanned ? (
@@ -245,7 +237,7 @@ export default function AuctionCreateForm() {
       {status && <p className="text-sm text-neutral-700">{status}</p>}
       <button
         onClick={handleSubmit}
-        disabled={!user || !isVerified || submitting || isBanned || role !== "seller" || !onboardingComplete}
+        disabled={!user || !isVerified || submitting || isBanned || !onboardingComplete}
         className="w-fit rounded-full bg-neutral-900 px-5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-neutral-400"
       >
         {submitting ? "Creating..." : "Create auction"}

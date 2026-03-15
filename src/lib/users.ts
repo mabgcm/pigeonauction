@@ -38,7 +38,7 @@ export async function upsertUserProfile(user: {
     email: user.email ?? "",
     name: user.displayName ?? "",
     anonymous_name: generateAnonymousName(),
-    role: "buyer",
+    role: "user",
     verification_status: "pending",
     onboarding_complete: false,
     full_name: user.displayName ?? "",

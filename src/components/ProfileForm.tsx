@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { getUserProfile, updateUserProfileDetails } from "@/lib/users";
 import type { UserProfile } from "@/types/auction";
@@ -8,14 +8,11 @@ import type { UserProfile } from "@/types/auction";
 export default function ProfileForm() {
   const { user } = useAuth();
   const [anonymousName, setAnonymousName] = useState("");
-  const [role, setRole] = useState<UserProfile["role"]>("buyer");
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [city, setCity] = useState("");
   const [province, setProvince] = useState("");
   const [country, setCountry] = useState("Canada");
-  const [sellerLoftName, setSellerLoftName] = useState("");
-  const [sellerClub, setSellerClub] = useState("");
   const [email, setEmail] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -29,14 +26,11 @@ export default function ProfileForm() {
       const profile = await getUserProfile(user.uid);
       if (!isMounted) return;
       setAnonymousName(profile?.anonymous_name || "Pigeon-XXXX");
-      setRole(profile?.role || "buyer");
       setFullName(profile?.full_name || profile?.name || user.displayName || "");
       setPhone(profile?.phone || "");
       setCity(profile?.city || "");
       setProvince(profile?.province || "");
       setCountry(profile?.country || "Canada");
-      setSellerLoftName(profile?.seller_loft_name || "");
-      setSellerClub(profile?.seller_club || "");
       setEmail(user.email ?? "");
       setVerificationStatus(profile?.verification_status || "pending");
       setOnboardingComplete(Boolean(profile?.onboarding_complete));
@@ -47,8 +41,6 @@ export default function ProfileForm() {
       isMounted = false;
     };
   }, [user]);
-
-  const isSeller = useMemo(() => role === "seller", [role]);
 
   async function handleSave() {
     if (!user) return;
@@ -64,14 +56,11 @@ export default function ProfileForm() {
     }
     setLoading(true);
     await updateUserProfileDetails(user.uid, {
-      role,
       full_name: trimmedName,
       phone: phone.trim(),
       city: city.trim(),
       province: province.trim(),
       country: country.trim(),
-      seller_loft_name: sellerLoftName.trim(),
-      seller_club: sellerClub.trim(),
       onboarding_complete: true
     });
     setLoading(false);
@@ -92,7 +81,7 @@ export default function ProfileForm() {
       <div className="space-y-4">
         <div>
           <label className="text-xs uppercase tracking-wide text-neutral-500">Email</label>
-          <p className="mt-1 text-sm text-neutral-700">{email}</p>
+          <p className="mt-1 break-words text-sm text-neutral-700">{email}</p>
         </div>
         <div>
           <label className="text-xs uppercase tracking-wide text-neutral-500">Anonymous username</label>
@@ -101,34 +90,6 @@ export default function ProfileForm() {
           </p>
           <p className="mt-1 text-xs text-neutral-500">
             This username is automatically assigned and cannot be edited.
-          </p>
-        </div>
-        <div>
-          <label className="text-xs uppercase tracking-wide text-neutral-500">Role</label>
-          <div className="mt-2 flex flex-wrap gap-3 text-sm">
-            <label className="flex items-center gap-2">
-              <input
-                type="radio"
-                name="role"
-                value="buyer"
-                checked={role === "buyer"}
-                onChange={() => setRole("buyer")}
-              />
-              Buyer
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="radio"
-                name="role"
-                value="seller"
-                checked={role === "seller"}
-                onChange={() => setRole("seller")}
-              />
-              Seller
-            </label>
-          </div>
-          <p className="mt-1 text-xs text-neutral-500">
-            Role selection is required for verification to buy or sell.
           </p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
@@ -173,26 +134,6 @@ export default function ProfileForm() {
             />
           </label>
         </div>
-        {isSeller && (
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="text-xs uppercase tracking-wide text-neutral-500">
-              Loft name (optional)
-              <input
-                value={sellerLoftName}
-                onChange={(event) => setSellerLoftName(event.target.value)}
-                className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
-              />
-            </label>
-            <label className="text-xs uppercase tracking-wide text-neutral-500">
-              Breeder club (optional)
-              <input
-                value={sellerClub}
-                onChange={(event) => setSellerClub(event.target.value)}
-                className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
-              />
-            </label>
-          </div>
-        )}
         <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-600">
           These details are required for verification to buy or sell. Admins review submissions before
           approving accounts.

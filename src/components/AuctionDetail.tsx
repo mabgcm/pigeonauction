@@ -21,7 +21,6 @@ export default function AuctionDetail({ auctionId }: { auctionId: string }) {
   const [profileName, setProfileName] = useState<string>("");
   const [isVerified, setIsVerified] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(false);
-  const [role, setRole] = useState<"buyer" | "seller" | "admin">("buyer");
   const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [now, setNow] = useState<Date>(new Date());
   const [galleryOpen, setGalleryOpen] = useState(false);
@@ -50,7 +49,6 @@ export default function AuctionDetail({ auctionId }: { auctionId: string }) {
       setProfileName(profile?.anonymous_name || "Pigeon-XXXX");
       setIsVerified(profile?.verification_status === "approved");
       setIsBanned(Boolean(profile?.banned));
-      setRole(profile?.role || "buyer");
       setOnboardingComplete(Boolean(profile?.onboarding_complete));
       setLoadingProfile(false);
     }
@@ -65,7 +63,6 @@ export default function AuctionDetail({ auctionId }: { auctionId: string }) {
     setProfileName("");
     setIsVerified(false);
     setIsBanned(false);
-    setRole("buyer");
     setOnboardingComplete(false);
     setLoadingProfile(false);
   }, [user]);
@@ -120,7 +117,6 @@ export default function AuctionDetail({ auctionId }: { auctionId: string }) {
       !isVerified ||
       isBanned ||
       !onboardingComplete ||
-      role !== "buyer" ||
       auction.status !== "live"
     )
       return;
@@ -255,8 +251,6 @@ export default function AuctionDetail({ auctionId }: { auctionId: string }) {
           <p className="text-sm text-rose-700">Your account is banned from bidding.</p>
         ) : !onboardingComplete ? (
           <p className="text-sm text-amber-700">Complete your profile to bid.</p>
-        ) : role !== "buyer" ? (
-          <p className="text-sm text-amber-700">Only buyer accounts can place bids.</p>
         ) : user && !isVerified ? (
           <p className="text-sm text-amber-700">Verification required to place bids.</p>
         ) : (
@@ -267,23 +261,12 @@ export default function AuctionDetail({ auctionId }: { auctionId: string }) {
           onChange={(event) => setAmount(event.target.value)}
           placeholder={`Enter ${formatCurrency(minBid)} or more`}
           className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
-          disabled={
-            isEnded || !isVerified || isBanned || !isLive || !onboardingComplete || role !== "buyer"
-          }
+          disabled={isEnded || !isVerified || isBanned || !isLive || !onboardingComplete}
         />
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button
           onClick={handleBid}
-          disabled={
-            !user ||
-            submitting ||
-            isEnded ||
-            !isVerified ||
-            isBanned ||
-            !isLive ||
-            !onboardingComplete ||
-            role !== "buyer"
-          }
+          disabled={!user || submitting || isEnded || !isVerified || isBanned || !isLive || !onboardingComplete}
           className="w-full rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-400"
         >
           {isEnded
@@ -295,20 +278,18 @@ export default function AuctionDetail({ auctionId }: { auctionId: string }) {
                   ? "Account banned"
                   : !onboardingComplete
                     ? "Complete profile"
-                    : role !== "buyer"
-                      ? "Buyer only"
-                      : !isVerified
-                        ? "Verification required"
-                        : submitting
-                          ? "Placing bid..."
-                          : "Place bid"
+                    : !isVerified
+                      ? "Verification required"
+                      : submitting
+                        ? "Placing bid..."
+                        : "Place bid"
               : "Sign in to bid"}
         </button>
       </div>
       <div className="space-y-4 rounded-3xl border border-white/60 bg-white/85 p-6 shadow-[0_12px_32px_rgba(15,23,42,0.1)] backdrop-blur">
         <h2 className="text-lg font-semibold text-neutral-900">Questions</h2>
         <p className="text-sm text-neutral-500">
-          Ask the seller about lineage, racing history, or health details. Admins will reply.
+          Ask about lineage, racing history, or health details. Admins will reply.
         </p>
         {user ? (
           <div className="space-y-2">

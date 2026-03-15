@@ -7,7 +7,7 @@ export default function NewAuctionPage() {
         <p className="text-xs uppercase tracking-[0.3em] text-neutral-400">Sell</p>
         <h1 className="text-4xl font-semibold text-neutral-900">List a pigeon for auction</h1>
         <p className="text-neutral-600">
-          Verified sellers can create live auctions with photos, details, and a starting price.
+          Verified users can create live auctions with photos, details, and a starting price.
         </p>
       </header>
       <AuctionCreateForm />

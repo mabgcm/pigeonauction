@@ -29,7 +29,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [auctions, setAuctions] = useState<Auction[]>([]);
   const [status, setStatus] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"users" | "auctions">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "auctions" | "activity">("users");
   const [userSearch, setUserSearch] = useState("");
   const [userRole, setUserRole] = useState<"all" | UserProfile["role"]>("all");
   const [userVerification, setUserVerification] = useState<"all" | UserProfile["verification_status"]>("all");
@@ -248,6 +248,14 @@ export default function AdminPage() {
         >
           Auctions
         </button>
+        <button
+          onClick={() => setActiveTab("activity")}
+          className={`rounded-full px-4 py-2 text-sm font-semibold ${
+            activeTab === "activity" ? "bg-neutral-900 text-white" : "bg-white text-neutral-700"
+          }`}
+        >
+          Activity
+        </button>
       </div>
 
       {activeTab === "users" ? (
@@ -258,22 +266,21 @@ export default function AdminPage() {
               value={userSearch}
               onChange={(event) => setUserSearch(event.target.value)}
               placeholder="Search name, email, id..."
-              className="rounded-full border border-neutral-300 px-3 py-1 text-sm"
+              className="w-full rounded-full border border-neutral-300 px-3 py-1 text-sm sm:w-auto"
             />
             <select
               value={userRole}
               onChange={(event) => setUserRole(event.target.value as typeof userRole)}
-              className="rounded-full border border-neutral-300 px-3 py-1 text-sm"
+              className="w-full rounded-full border border-neutral-300 px-3 py-1 text-sm sm:w-auto"
             >
               <option value="all">All roles</option>
-              <option value="buyer">buyer</option>
-              <option value="seller">seller</option>
+              <option value="user">user</option>
               <option value="admin">admin</option>
             </select>
             <select
               value={userVerification}
               onChange={(event) => setUserVerification(event.target.value as typeof userVerification)}
-              className="rounded-full border border-neutral-300 px-3 py-1 text-sm"
+              className="w-full rounded-full border border-neutral-300 px-3 py-1 text-sm sm:w-auto"
             >
               <option value="all">All verification</option>
               <option value="pending">pending</option>
@@ -283,7 +290,7 @@ export default function AdminPage() {
             <select
               value={userBanned}
               onChange={(event) => setUserBanned(event.target.value as typeof userBanned)}
-              className="rounded-full border border-neutral-300 px-3 py-1 text-sm"
+              className="w-full rounded-full border border-neutral-300 px-3 py-1 text-sm sm:w-auto"
             >
               <option value="all">All status</option>
               <option value="active">Active</option>
@@ -292,7 +299,7 @@ export default function AdminPage() {
             <select
               value={userNew}
               onChange={(event) => setUserNew(event.target.value as typeof userNew)}
-              className="rounded-full border border-neutral-300 px-3 py-1 text-sm"
+              className="w-full rounded-full border border-neutral-300 px-3 py-1 text-sm sm:w-auto"
             >
               <option value="all">All onboarding</option>
               <option value="new">New users</option>
@@ -332,7 +339,7 @@ export default function AdminPage() {
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-neutral-500">{item.email}</p>
+                      <p className="text-xs text-neutral-500 break-words">{item.email}</p>
                     </div>
                     <div>
                       <p className="text-xs uppercase tracking-wide text-neutral-400">Role</p>
@@ -343,8 +350,7 @@ export default function AdminPage() {
                         }
                         className="mt-1 w-full rounded-lg border border-neutral-300 px-2 py-1 text-sm"
                       >
-                        <option value="buyer">buyer</option>
-                        <option value="seller">seller</option>
+                        <option value="user">user</option>
                         <option value="admin">admin</option>
                       </select>
                     </div>
@@ -378,7 +384,7 @@ export default function AdminPage() {
             )}
           </div>
         </section>
-      ) : (
+      ) : activeTab === "auctions" ? (
         <section className="rounded-3xl border border-white/60 bg-white/85 p-6 shadow-[0_12px_32px_rgba(15,23,42,0.08)] backdrop-blur">
           <div className="flex flex-wrap items-center gap-3">
             <h2 className="text-lg font-semibold text-neutral-900">Auctions</h2>
@@ -386,12 +392,12 @@ export default function AdminPage() {
               value={auctionSearch}
               onChange={(event) => setAuctionSearch(event.target.value)}
               placeholder="Search pigeon, seller id..."
-              className="rounded-full border border-neutral-300 px-3 py-1 text-sm"
+              className="w-full rounded-full border border-neutral-300 px-3 py-1 text-sm sm:w-auto"
             />
             <select
               value={auctionStatus}
               onChange={(event) => setAuctionStatus(event.target.value as typeof auctionStatus)}
-              className="rounded-full border border-neutral-300 px-3 py-1 text-sm"
+              className="w-full rounded-full border border-neutral-300 px-3 py-1 text-sm sm:w-auto"
             >
               <option value="all">All status</option>
               <option value="pending">pending</option>
@@ -511,29 +517,29 @@ export default function AdminPage() {
             </div>
           )}
         </section>
+      ) : (
+        <section className="rounded-3xl border border-white/60 bg-white/85 p-6 shadow-[0_12px_32px_rgba(15,23,42,0.08)] backdrop-blur">
+          <h2 className="text-lg font-semibold text-neutral-900">Recent admin activity</h2>
+          <div className="mt-4 grid gap-2 text-sm text-neutral-600">
+            {logs.length === 0 ? (
+              <p>No audit entries yet.</p>
+            ) : (
+              logs.map((log) => (
+                <div
+                  key={log.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2"
+                >
+                  <span className="font-semibold text-neutral-900">{log.action}</span>
+                  <span className="text-xs text-neutral-500">
+                    {log.target_type}:{log.target_id.slice(0, 8)}…
+                  </span>
+                  <span className="text-xs text-neutral-400">{formatDate(log.created_at)}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
       )}
-
-      <section className="rounded-3xl border border-white/60 bg-white/85 p-6 shadow-[0_12px_32px_rgba(15,23,42,0.08)] backdrop-blur">
-        <h2 className="text-lg font-semibold text-neutral-900">Recent admin activity</h2>
-        <div className="mt-4 grid gap-2 text-sm text-neutral-600">
-          {logs.length === 0 ? (
-            <p>No audit entries yet.</p>
-          ) : (
-            logs.map((log) => (
-              <div
-                key={log.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2"
-              >
-                <span className="font-semibold text-neutral-900">{log.action}</span>
-                <span className="text-xs text-neutral-500">
-                  {log.target_type}:{log.target_id.slice(0, 8)}…
-                </span>
-                <span className="text-xs text-neutral-400">{formatDate(log.created_at)}</span>
-              </div>
-            ))
-          )}
-        </div>
-      </section>
     </main>
   );
 }
