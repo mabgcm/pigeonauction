@@ -147,7 +147,7 @@ export default function AuctionCreateForm() {
   }
 
   return (
-    <div className="grid gap-6 rounded-3xl border border-white/60 bg-white/80 p-6 shadow-[0_12px_36px_rgba(15,23,42,0.08)] backdrop-blur">
+    <div className="grid gap-6 rounded-2xl border border-neutral-200 bg-white p-6">
       {!user ? (
         <p className="text-sm text-neutral-600">Sign in to list your pigeon.</p>
       ) : loadingProfile ? (
@@ -163,59 +163,59 @@ export default function AuctionCreateForm() {
       )}
 
       <div className="grid gap-4 md:grid-cols-2">
-        <label className="flex flex-col gap-2 text-sm text-neutral-600">
+        <label className="text-xs uppercase tracking-wide text-neutral-500">
           Pigeon name
           <input
             value={pigeonName}
             onChange={(e) => setPigeonName(e.target.value)}
-            className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
             placeholder="Blue Bar Homer"
           />
         </label>
-        <label className="flex flex-col gap-2 text-sm text-neutral-600">
+        <label className="text-xs uppercase tracking-wide text-neutral-500">
           Starting price (CAD)
           <input
             value={startingPrice}
             onChange={(e) => setStartingPrice(e.target.value)}
-            className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
             type="number"
             min={10}
           />
         </label>
-        <label className="flex flex-col gap-2 text-sm text-neutral-600">
+        <label className="text-xs uppercase tracking-wide text-neutral-500">
           Auction end date & time
           <input
             value={endDateTime}
             onChange={(e) => setEndDateTime(e.target.value)}
-            className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
             type="datetime-local"
           />
         </label>
-        <label className="flex flex-col gap-2 text-sm text-neutral-600 md:col-span-2">
+        <label className="text-xs uppercase tracking-wide text-neutral-500 md:col-span-2">
           Pigeon description
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="min-h-[120px] rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+            className="mt-1 min-h-[120px] w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
             placeholder="Temperament, racing history, unique traits..."
           />
         </label>
-        <label className="flex flex-col gap-2 text-sm text-neutral-600 md:col-span-2">
+        <label className="text-xs uppercase tracking-wide text-neutral-500 md:col-span-2">
           Pedigree info (optional)
           <textarea
             value={pedigree}
             onChange={(e) => setPedigree(e.target.value)}
-            className="min-h-[80px] rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+            className="mt-1 min-h-[80px] w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
           />
         </label>
-        <label className="flex flex-col gap-2 text-sm text-neutral-600 md:col-span-2">
+        <label className="text-xs uppercase tracking-wide text-neutral-500 md:col-span-2">
           Pigeon photos
           <input
             type="file"
             accept="image/*"
             multiple
             onChange={(event) => setPhotoFiles(Array.from(event.target.files ?? []))}
-            className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
           />
           <span className="text-xs text-neutral-500">
             Upload photos from your device. If none are selected, the demo image is used.
@@ -238,7 +238,7 @@ export default function AuctionCreateForm() {
       <button
         onClick={handleSubmit}
         disabled={!user || !isVerified || submitting || isBanned || !onboardingComplete}
-        className="w-fit rounded-full bg-neutral-900 px-5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-neutral-400"
+        className="w-fit rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-400"
       >
         {submitting ? "Creating..." : "Create auction"}
       </button>
