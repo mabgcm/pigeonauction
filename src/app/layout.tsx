@@ -2,6 +2,7 @@ import "@/styles/globals.css";
 import type { ReactNode } from "react";
 import Providers from "@/components/Providers";
 import SiteHeader from "@/components/SiteHeader";
+import MobileTabBar from "@/components/MobileTabBar";
 import { Fraunces, Space_Grotesk } from "next/font/google";
 
 const fraunces = Fraunces({
@@ -27,7 +28,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className={`${fraunces.variable} ${spaceGrotesk.variable}`}>
         <Providers>
           <SiteHeader />
-          {children}
+          <div className="min-h-[100svh] pb-24 md:pb-0">{children}</div>
+          <MobileTabBar />
         </Providers>
       </body>
     </html>
