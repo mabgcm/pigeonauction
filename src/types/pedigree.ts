@@ -32,7 +32,8 @@ export interface PedigreePreview {
 }
 
 export interface ProcessPedigreeRequest {
-  auctionId: string;
+  target: "auction" | "loft";
+  auctionId?: string;
   storagePath: string;
   sourceUrl: string;
   fileName: string;
@@ -44,6 +45,7 @@ export interface ProcessPedigreeResponse {
   jobId: string;
   pedigreeId: string;
   subjectPigeonId: string;
+  loftEntryId?: string | null;
   pdfUrl: string;
   preview: PedigreePreview;
   summary: string;

@@ -41,6 +41,7 @@ export interface Auction {
   pedigree_subject_id?: string;
   pedigree_pdf_url?: string;
   pedigree_preview?: PedigreePreview;
+  source_loft_pigeon_id?: string;
   pigeon_photos?: string[];
   starting_price: number;
   current_price: number;

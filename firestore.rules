@@ -1,0 +1,132 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function currentUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isAdmin() {
+      return signedIn() && currentUserDoc().data.role == "admin";
+    }
+
+    function ownsUser(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function ownsField(field) {
+      return signedIn() && request.resource.data[field] == request.auth.uid;
+    }
+
+    match /users/{userId} {
+      allow read: if ownsUser(userId) || isAdmin();
+      allow create: if ownsUser(userId);
+      allow update: if ownsUser(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /auctions/{auctionId} {
+      allow read: if true;
+      allow create: if signedIn() && ownsField("seller_id");
+      allow update, delete: if signedIn() && (resource.data.seller_id == request.auth.uid || isAdmin());
+
+      match /questions/{questionId} {
+        allow read: if true;
+        allow create: if signedIn() && ownsField("user_id");
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    match /bids/{bidId} {
+      allow read: if true;
+      allow create: if signedIn() && ownsField("user_id");
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    match /orders/{orderId} {
+      allow read: if signedIn() &&
+        (resource.data.buyer_id == request.auth.uid ||
+         resource.data.seller_id == request.auth.uid ||
+         isAdmin());
+      allow create: if signedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    match /admin_logs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /pigeons/{pigeonId} {
+      allow read: if signedIn() || isAdmin();
+      allow create: if signedIn();
+      allow update: if isAdmin() ||
+        (signedIn() &&
+         exists(/databases/$(database)/documents/loft_entries/$(pigeonId)) &&
+         get(/databases/$(database)/documents/loft_entries/$(pigeonId)).data.user_id == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    match /loft_entries/{entryId} {
+      allow read: if signedIn() &&
+        (resource.data.user_id == request.auth.uid || isAdmin());
+      allow create: if signedIn() && ownsField("user_id");
+      allow update, delete: if signedIn() &&
+        (resource.data.user_id == request.auth.uid || isAdmin());
+    }
+
+    match /breeding_pairs/{pairId} {
+      allow read: if signedIn() &&
+        (resource.data.user_id == request.auth.uid || isAdmin());
+      allow create: if signedIn() && ownsField("user_id");
+      allow update, delete: if signedIn() &&
+        (resource.data.user_id == request.auth.uid || isAdmin());
+    }
+
+    match /eggs/{eggId} {
+      allow read: if signedIn() &&
+        (resource.data.user_id == request.auth.uid || isAdmin());
+      allow create: if signedIn() && ownsField("user_id");
+      allow update, delete: if signedIn() &&
+        (resource.data.user_id == request.auth.uid || isAdmin());
+    }
+
+    match /chicks/{chickId} {
+      allow read: if signedIn() &&
+        (resource.data.user_id == request.auth.uid || isAdmin());
+      allow create: if signedIn() && ownsField("user_id");
+      allow update, delete: if signedIn() &&
+        (resource.data.user_id == request.auth.uid || isAdmin());
+    }
+
+    match /loft_diary/{entryId} {
+      allow read: if signedIn() &&
+        (resource.data.user_id == request.auth.uid || isAdmin());
+      allow create: if signedIn() && ownsField("user_id");
+      allow update, delete: if signedIn() &&
+        (resource.data.user_id == request.auth.uid || isAdmin());
+    }
+
+    match /pedigrees/{pedigreeId} {
+      allow read: if signedIn() &&
+        (resource.data.user_id == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+
+    match /pedigree_documents/{documentId} {
+      allow read: if signedIn() &&
+        (resource.data.user_id == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+
+    match /pedigree_jobs/{jobId} {
+      allow read: if signedIn() &&
+        (resource.data.user_id == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+  }
+}

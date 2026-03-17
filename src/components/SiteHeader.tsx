@@ -4,28 +4,34 @@ import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import { useEffect, useState } from "react";
 import { getUserProfile } from "@/lib/users";
+import type { VerificationStatus } from "@/types/auction";
 
 export default function SiteHeader() {
   const { user, loading, signInWithGoogle, signOutUser } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<VerificationStatus | null>(null);
 
   useEffect(() => {
     let active = true;
     async function loadProfile() {
       if (!user) {
         setIsAdmin(false);
+        setVerificationStatus(null);
         return;
       }
       const profile = await getUserProfile(user.uid);
       if (!active) return;
       setIsAdmin(profile?.role === "admin");
+      setVerificationStatus(profile?.verification_status ?? null);
     }
     loadProfile();
     return () => {
       active = false;
     };
   }, [user]);
+
+  const showLoftLink = verificationStatus === "approved";
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/60 bg-white/80 backdrop-blur">
@@ -38,6 +44,11 @@ export default function SiteHeader() {
             <Link href="/auctions" className="hover:text-neutral-900">
               Auctions
             </Link>
+            {showLoftLink && (
+              <Link href="/loft" className="hover:text-neutral-900">
+                My Loft
+              </Link>
+            )}
             <Link href="/auctions/new" className="hover:text-neutral-900">
               Sell
             </Link>
@@ -54,6 +65,11 @@ export default function SiteHeader() {
               <span className="text-neutral-500">Loading...</span>
             ) : user ? (
               <>
+                {showLoftLink && (
+                  <Link href="/loft" className="text-neutral-600 hover:text-neutral-900">
+                    Loft
+                  </Link>
+                )}
                 <Link href="/profile" className="text-neutral-600 hover:text-neutral-900">
                   {user.displayName ?? user.email}
                 </Link>
@@ -78,6 +94,11 @@ export default function SiteHeader() {
               <span className="text-xs text-neutral-500">Loading...</span>
             ) : user ? (
               <div className="flex items-center gap-2">
+                {showLoftLink && (
+                  <Link href="/loft" className="text-xs font-semibold text-neutral-700 hover:text-neutral-900">
+                    Loft
+                  </Link>
+                )}
                 <Link href="/profile" className="text-xs font-semibold text-neutral-700 hover:text-neutral-900">
                   {user.displayName ?? user.email}
                 </Link>

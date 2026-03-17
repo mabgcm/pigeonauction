@@ -8,10 +8,12 @@ import { getUserProfile } from "@/lib/users";
 import { processPedigreeUpload } from "@/lib/functions";
 import { getStorageClient } from "@/lib/storage";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { getAuctionPrefillFromLoft } from "@/lib/loft";
+import type { LoftAuctionPrefill } from "@/types/loft";
 
 const fallbackPhotos = ["/images/pigeon.jpg"];
 
-export default function AuctionCreateForm() {
+export default function AuctionCreateForm({ sourcePigeonId }: { sourcePigeonId?: string }) {
   const { user } = useAuth();
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [isVerified, setIsVerified] = useState(false);
@@ -31,6 +33,8 @@ export default function AuctionCreateForm() {
     return `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}T${pad(end.getHours())}:${pad(end.getMinutes())}`;
   });
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+  const [prefill, setPrefill] = useState<LoftAuctionPrefill | null>(null);
+  const [prefillLoaded, setPrefillLoaded] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -52,10 +56,37 @@ export default function AuctionCreateForm() {
     };
   }, [user]);
 
+  useEffect(() => {
+    let active = true;
+    async function loadPrefill() {
+      if (!user || !sourcePigeonId) {
+        setPrefill(null);
+        setPrefillLoaded(true);
+        return;
+      }
+      const result = await getAuctionPrefillFromLoft(user.uid, sourcePigeonId);
+      if (!active) return;
+      setPrefill(result);
+      if (result) {
+        setPigeonName((value) => value || result.pigeonName);
+        setDescription((value) => value || result.description);
+      }
+      setPrefillLoaded(true);
+    }
+    loadPrefill().catch(() => {
+      if (!active) return;
+      setPrefillLoaded(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, [sourcePigeonId, user]);
+
   const previewPhotos = useMemo(() => {
+    if (photoFiles.length === 0 && prefill?.photoUrls?.length) return prefill.photoUrls;
     if (photoFiles.length === 0) return fallbackPhotos;
     return photoFiles.map((file) => URL.createObjectURL(file));
-  }, [photoFiles]);
+  }, [photoFiles, prefill?.photoUrls]);
 
   useEffect(() => {
     return () => {
@@ -117,9 +148,12 @@ export default function AuctionCreateForm() {
         seller_id: user.uid,
         pigeon_name: pigeonName.trim(),
         description: description.trim(),
-        pedigree_info: "",
+        pedigree_info: prefill?.pedigreeInfo ?? "",
         pedigree_status: pedigreeFile ? "processing" : "idle",
-        pigeon_photos: fallbackPhotos,
+        pedigree_subject_id: prefill?.pedigreeSubjectId ?? null,
+        pedigree_preview: prefill?.pedigreePreview ?? null,
+        source_loft_pigeon_id: prefill?.pigeonId ?? null,
+        pigeon_photos: prefill?.photoUrls?.length ? prefill.photoUrls : fallbackPhotos,
         starting_price: startPrice,
         current_price: startPrice,
         bid_count: 0,
@@ -161,6 +195,7 @@ export default function AuctionCreateForm() {
 
         try {
           await processPedigreeUpload({
+            target: "auction",
             auctionId: auctionRef.id,
             storagePath: pedigreeStorageRef.fullPath,
             sourceUrl,
@@ -281,6 +316,17 @@ export default function AuctionCreateForm() {
       </div>
 
       {status && <p className="text-sm text-neutral-700">{status}</p>}
+      {sourcePigeonId && prefillLoaded ? (
+        <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+          {prefill ? (
+            <>
+              Prefilled from loft pigeon <span className="font-semibold">{prefill.pigeonName}</span>.
+            </>
+          ) : (
+            <>The selected loft pigeon could not be loaded for prefill.</>
+          )}
+        </div>
+      ) : null}
       <button
         onClick={handleSubmit}
         disabled={!user || !isVerified || submitting || isBanned || !onboardingComplete}

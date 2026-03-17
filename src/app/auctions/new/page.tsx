@@ -1,6 +1,10 @@
 import AuctionCreateForm from "@/components/AuctionCreateForm";
 
-export default function NewAuctionPage() {
+export default function NewAuctionPage({
+  searchParams
+}: {
+  searchParams?: { pigeonId?: string };
+}) {
   return (
     <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-8 px-6 py-12">
       <header className="space-y-3">
@@ -10,7 +14,7 @@ export default function NewAuctionPage() {
           Verified users can create live auctions with photos, details, and a starting price.
         </p>
       </header>
-      <AuctionCreateForm />
+      <AuctionCreateForm sourcePigeonId={searchParams?.pigeonId} />
     </main>
   );
 }

@@ -37,12 +37,21 @@ const pedigreeExtractionSchema = z.object({
 });
 
 const processPedigreeRequestSchema = z.object({
-  auctionId: z.string().min(1),
+  target: z.enum(["auction", "loft"]).default("auction"),
+  auctionId: z.string().min(1).optional(),
   storagePath: z.string().min(1),
   sourceUrl: z.string().url(),
   fileName: z.string().min(1),
   contentType: z.string().min(1),
   pigeonName: z.string().trim().min(1)
+}).superRefine((value, ctx) => {
+  if (value.target === "auction" && !value.auctionId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "auctionId is required when target is auction.",
+      path: ["auctionId"]
+    });
+  }
 });
 
 type PedigreeBird = z.infer<typeof pedigreeBirdSchema>;
@@ -62,6 +71,8 @@ type StoredPigeon = {
   id: string;
   bird: PedigreeBird;
 };
+
+type ProcessPedigreePayload = z.infer<typeof processPedigreeRequestSchema>;
 
 function normalizeString(value?: string | null) {
   return (value ?? "").trim().replace(/\s+/g, " ");
@@ -203,6 +214,62 @@ async function upsertPigeon(slot: PedigreeSlot, bird: PedigreeBird, pedigreeId: 
 
   await ref.set(payload, { merge: true });
   return { id: ref.id, bird };
+}
+
+async function upsertLoftEntry(params: {
+  uid: string;
+  pigeonId: string;
+  bird: PedigreeBird;
+}) {
+  const { uid, pigeonId, bird } = params;
+  const db = getFirestore();
+  const now = new Date().toISOString();
+  const ref = db.collection("loft_entries").doc(pigeonId);
+  const existing = await ref.get();
+  const categories = ["Pedigree Import"];
+
+  if (!existing.exists) {
+    await ref.set({
+      user_id: uid,
+      pigeon_id: pigeonId,
+      ring_number: bird.ring_number ?? "",
+      name: bird.name ?? "",
+      sex: bird.sex,
+      color: bird.color ?? "",
+      photo_url: "",
+      status: "active",
+      categories,
+      notes: bird.notes ?? "",
+      created_at: now,
+      updated_at: now
+    });
+    return ref.id;
+  }
+
+  const data = existing.data() as {
+    user_id?: string;
+    categories?: string[];
+  };
+
+  if (data.user_id !== uid) {
+    throw new HttpsError("permission-denied", "This pigeon is already assigned to another loft.");
+  }
+
+  await ref.set(
+    {
+      ring_number: bird.ring_number ?? "",
+      name: bird.name ?? "",
+      sex: bird.sex,
+      color: bird.color ?? "",
+      status: "active",
+      categories: Array.from(new Set([...(data.categories ?? []), ...categories])),
+      notes: bird.notes ?? "",
+      updated_at: now
+    },
+    { merge: true }
+  );
+
+  return ref.id;
 }
 
 async function generatePedigreePdf(extraction: PedigreeExtraction, summary: string) {
@@ -372,16 +439,21 @@ async function runPedigreeProcessing(uid: string, requestData: unknown) {
 
     const db = getFirestore();
     const bucket = getStorage().bucket();
-    const auctionRef = db.collection("auctions").doc(payload.auctionId);
-    const auctionSnap = await auctionRef.get();
+    let auctionRef: FirebaseFirestore.DocumentReference | null = null;
+    let auction: { seller_id?: string; pigeon_name?: string } | null = null;
 
-    if (!auctionSnap.exists) {
-      throw new HttpsError("not-found", "Auction not found.");
-    }
+    if (payload.target === "auction") {
+      auctionRef = db.collection("auctions").doc(payload.auctionId!);
+      const auctionSnap = await auctionRef.get();
 
-    const auction = auctionSnap.data() as { seller_id?: string; pigeon_name?: string };
-    if (auction.seller_id !== uid) {
-      throw new HttpsError("permission-denied", "You can only process your own auctions.");
+      if (!auctionSnap.exists) {
+        throw new HttpsError("not-found", "Auction not found.");
+      }
+
+      auction = auctionSnap.data() as { seller_id?: string; pigeon_name?: string };
+      if (auction.seller_id !== uid) {
+        throw new HttpsError("permission-denied", "You can only process your own auctions.");
+      }
     }
 
     const file = bucket.file(payload.storagePath);
@@ -403,23 +475,28 @@ async function runPedigreeProcessing(uid: string, requestData: unknown) {
 
     await Promise.all([
       jobRef.set({
-        auction_id: payload.auctionId,
+        auction_id: payload.auctionId ?? null,
+        target: payload.target,
         user_id: uid,
         status: "processing",
         source_path: payload.storagePath,
         created_at: now,
         updated_at: now
       }),
-      auctionRef.set(
-        {
-          pedigree_job_id: jobRef.id,
-          pedigree_status: "processing",
-          pedigree_error: null,
-          pedigree_source_url: payload.sourceUrl,
-          pedigree_source_path: payload.storagePath
-        },
-        { merge: true }
-      )
+      ...(auctionRef
+        ? [
+            auctionRef.set(
+              {
+                pedigree_job_id: jobRef.id,
+                pedigree_status: "processing",
+                pedigree_error: null,
+                pedigree_source_url: payload.sourceUrl,
+                pedigree_source_path: payload.storagePath
+              },
+              { merge: true }
+            )
+          ]
+        : [])
     ]);
 
     try {
@@ -428,11 +505,11 @@ async function runPedigreeProcessing(uid: string, requestData: unknown) {
         apiKey: OPENAI_API_KEY.value(),
         bytes,
         contentType: payload.contentType,
-        pigeonName: auction.pigeon_name ?? payload.pigeonName,
+        pigeonName: auction?.pigeon_name ?? payload.pigeonName,
         fileName: payload.fileName
       });
 
-      const subject = ensureBird(extraction.subject, auction.pigeon_name ?? payload.pigeonName);
+      const subject = ensureBird(extraction.subject, auction?.pigeon_name ?? payload.pigeonName);
       const normalizedExtraction: PedigreeExtraction = {
         ...extraction,
         subject,
@@ -462,6 +539,11 @@ async function runPedigreeProcessing(uid: string, requestData: unknown) {
           continue;
         }
         stored.set(slot, await upsertPigeon(slot, bird, pedigreeRef.id, jobRef.id));
+      }
+
+      const subjectStored = stored.get("subject");
+      if (!subjectStored?.id) {
+        throw new HttpsError("internal", "The pedigree subject could not be stored.");
       }
 
       const relationshipUpdates = [
@@ -502,7 +584,7 @@ async function runPedigreeProcessing(uid: string, requestData: unknown) {
         source_language: normalizedExtraction.source_language,
         notes: normalizedExtraction.notes,
         subject: {
-          pigeon_id: stored.get("subject")?.id ?? null,
+          pigeon_id: subjectStored.id,
           ...normalizedExtraction.subject
         },
         father: normalizedExtraction.father
@@ -519,9 +601,16 @@ async function runPedigreeProcessing(uid: string, requestData: unknown) {
           : null
       };
 
+      const loftEntryId = await upsertLoftEntry({
+        uid,
+        pigeonId: subjectStored.id,
+        bird: normalizedExtraction.subject
+      });
+
       const summary = buildPedigreeSummary(normalizedExtraction);
       const pdfBytes = await generatePedigreePdf(normalizedExtraction, summary);
-      const pdfPath = `pedigrees/pdfs/${uid}/${payload.auctionId}/${pedigreeRef.id}.pdf`;
+      const pdfScope = payload.target === "auction" ? payload.auctionId : "loft";
+      const pdfPath = `pedigrees/pdfs/${uid}/${pdfScope}/${pedigreeRef.id}.pdf`;
       const pdfToken = randomUUID();
 
       await bucket.file(pdfPath).save(pdfBytes, {
@@ -538,7 +627,8 @@ async function runPedigreeProcessing(uid: string, requestData: unknown) {
 
       await Promise.all([
         documentRef.set({
-          auction_id: payload.auctionId,
+          auction_id: payload.auctionId ?? null,
+          target: payload.target,
           user_id: uid,
           source_url: payload.sourceUrl,
           source_path: payload.storagePath,
@@ -553,9 +643,11 @@ async function runPedigreeProcessing(uid: string, requestData: unknown) {
           updated_at: new Date().toISOString()
         }),
         pedigreeRef.set({
-          auction_id: payload.auctionId,
+          auction_id: payload.auctionId ?? null,
+          target: payload.target,
           user_id: uid,
           subject_pigeon_id: stored.get("subject")?.id ?? null,
+          loft_entry_id: loftEntryId,
           slot_pigeon_ids: Object.fromEntries(
             slots.map((slot) => [slot, stored.get(slot)?.id ?? null])
           ),
@@ -565,26 +657,32 @@ async function runPedigreeProcessing(uid: string, requestData: unknown) {
           created_at: now,
           updated_at: new Date().toISOString()
         }),
-        auctionRef.set(
-          {
-            pedigree_info: summary,
-            pedigree_job_id: jobRef.id,
-            pedigree_status: "completed",
-            pedigree_error: null,
-            pedigree_subject_id: stored.get("subject")?.id ?? null,
-            pedigree_pdf_url: pdfUrl,
-            pedigree_preview: preview
-          },
-          { merge: true }
-        ),
+        ...(auctionRef
+          ? [
+              auctionRef.set(
+                {
+                  pedigree_info: summary,
+                  pedigree_job_id: jobRef.id,
+                  pedigree_status: "completed",
+                  pedigree_error: null,
+                  pedigree_subject_id: subjectStored.id,
+                  pedigree_pdf_url: pdfUrl,
+                  pedigree_preview: preview
+                },
+                { merge: true }
+              )
+            ]
+          : []),
         jobRef.set(
           {
             status: "completed",
+            target: payload.target,
             summary,
             preview,
             pedigree_id: pedigreeRef.id,
             document_id: documentRef.id,
-            subject_pigeon_id: stored.get("subject")?.id ?? null,
+            subject_pigeon_id: subjectStored.id,
+            loft_entry_id: loftEntryId,
             pdf_url: pdfUrl,
             updated_at: new Date().toISOString()
           },
@@ -595,7 +693,8 @@ async function runPedigreeProcessing(uid: string, requestData: unknown) {
       return {
         jobId: jobRef.id,
         pedigreeId: pedigreeRef.id,
-        subjectPigeonId: stored.get("subject")?.id,
+        subjectPigeonId: subjectStored.id,
+        loftEntryId,
         pdfUrl,
         preview,
         summary
@@ -617,13 +716,17 @@ async function runPedigreeProcessing(uid: string, requestData: unknown) {
           },
           { merge: true }
         ),
-        auctionRef.set(
-          {
-            pedigree_status: "failed",
-            pedigree_error: message
-          },
-          { merge: true }
-        )
+        ...(auctionRef
+          ? [
+              auctionRef.set(
+                {
+                  pedigree_status: "failed",
+                  pedigree_error: message
+                },
+                { merge: true }
+              )
+            ]
+          : [])
       ]);
 
       throw new HttpsError("internal", message);

@@ -5,28 +5,32 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { getUserProfile } from "@/lib/users";
+import type { VerificationStatus } from "@/types/auction";
 
 type Tab = {
   href: string;
   label: string;
-  icon: "home" | "auctions" | "sell" | "profile" | "admin";
+  icon: "home" | "auctions" | "sell" | "loft" | "profile" | "admin";
 };
 
 export default function MobileTabBar() {
   const pathname = usePathname();
   const { user } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<VerificationStatus | null>(null);
 
   useEffect(() => {
     let active = true;
     async function loadProfile() {
       if (!user) {
         setIsAdmin(false);
+        setVerificationStatus(null);
         return;
       }
       const profile = await getUserProfile(user.uid);
       if (!active) return;
       setIsAdmin(profile?.role === "admin");
+      setVerificationStatus(profile?.verification_status ?? null);
     }
     loadProfile();
     return () => {
@@ -39,6 +43,10 @@ export default function MobileTabBar() {
     { href: "/auctions", label: "Auctions", icon: "auctions" },
     { href: "/auctions/new", label: "Sell", icon: "sell" }
   ];
+
+  if (verificationStatus === "approved") {
+    tabs.splice(2, 0, { href: "/loft", label: "Loft", icon: "loft" });
+  }
 
   if (isAdmin) {
     tabs.push({ href: "/admin", label: "Admin", icon: "admin" });
@@ -76,6 +84,14 @@ export default function MobileTabBar() {
                 {tab.icon === "sell" && (
                   <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M12 5v14M5 12h14" />
+                  </svg>
+                )}
+                {tab.icon === "loft" && (
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="4" y="4" width="7" height="7" rx="1.5" />
+                    <rect x="13" y="4" width="7" height="7" rx="1.5" />
+                    <rect x="4" y="13" width="7" height="7" rx="1.5" />
+                    <rect x="13" y="13" width="7" height="7" rx="1.5" />
                   </svg>
                 )}
                 {tab.icon === "profile" && (
