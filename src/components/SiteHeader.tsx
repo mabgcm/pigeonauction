@@ -65,11 +65,6 @@ export default function SiteHeader() {
               <span className="text-neutral-500">Loading...</span>
             ) : user ? (
               <>
-                {showLoftLink && (
-                  <Link href="/loft" className="text-neutral-600 hover:text-neutral-900">
-                    Loft
-                  </Link>
-                )}
                 <Link href="/profile" className="text-neutral-600 hover:text-neutral-900">
                   {user.displayName ?? user.email}
                 </Link>
@@ -94,11 +89,6 @@ export default function SiteHeader() {
               <span className="text-xs text-neutral-500">Loading...</span>
             ) : user ? (
               <div className="flex items-center gap-2">
-                {showLoftLink && (
-                  <Link href="/loft" className="text-xs font-semibold text-neutral-700 hover:text-neutral-900">
-                    Loft
-                  </Link>
-                )}
                 <Link href="/profile" className="text-xs font-semibold text-neutral-700 hover:text-neutral-900">
                   {user.displayName ?? user.email}
                 </Link>
