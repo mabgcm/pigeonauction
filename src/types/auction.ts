@@ -1,3 +1,5 @@
+import type { PedigreeJobStatus, PedigreePreview } from "@/types/pedigree";
+
 export type UserRole = "user" | "admin";
 
 export type VerificationStatus = "pending" | "approved" | "rejected";
@@ -31,6 +33,14 @@ export interface Auction {
   pigeon_name: string;
   description: string;
   pedigree_info?: string;
+  pedigree_source_url?: string;
+  pedigree_source_path?: string;
+  pedigree_job_id?: string;
+  pedigree_status?: PedigreeJobStatus;
+  pedigree_error?: string;
+  pedigree_subject_id?: string;
+  pedigree_pdf_url?: string;
+  pedigree_preview?: PedigreePreview;
   pigeon_photos?: string[];
   starting_price: number;
   current_price: number;

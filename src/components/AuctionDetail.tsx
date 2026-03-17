@@ -5,6 +5,7 @@ import { listenToAuction, listenToBids, getNextMinimumBid, placeBid } from "@/li
 import { useAuth } from "@/components/AuthProvider";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { Auction, AuctionQuestion, Bid } from "@/types/auction";
+import type { PedigreePreview } from "@/types/pedigree";
 import BidderName from "@/components/BidderName";
 import { getUserProfile } from "@/lib/users";
 import PigeonGalleryModal from "@/components/PigeonGalleryModal";
@@ -151,6 +152,7 @@ export default function AuctionDetail({ auctionId }: { auctionId: string }) {
       : ["/images/pigeon.jpg"];
   const isPending = auction.status === "pending";
   const isLive = auction.status === "live";
+  const pedigreePreview = auction.pedigree_preview as PedigreePreview | undefined;
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1.4fr_0.6fr]">
@@ -209,6 +211,96 @@ export default function AuctionDetail({ auctionId }: { auctionId: string }) {
               <dd className="text-base text-neutral-800 capitalize">{auction.status}</dd>
             </div>
           </dl>
+        </div>
+
+        <div className="rounded-3xl border border-white/60 bg-white/85 p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)] backdrop-blur">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-neutral-900">Pedigree</h2>
+              <p className="text-sm text-neutral-500">
+                AI-extracted lineage stored as reusable pigeon records.
+              </p>
+            </div>
+            {auction.pedigree_pdf_url ? (
+              <a
+                href={auction.pedigree_pdf_url}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-full bg-neutral-900 px-4 py-2 text-sm font-semibold text-white"
+              >
+                Open PDF
+              </a>
+            ) : null}
+          </div>
+
+          {auction.pedigree_status === "processing" ? (
+            <p className="mt-4 text-sm text-amber-700">Pedigree extraction is still running.</p>
+          ) : auction.pedigree_status === "failed" ? (
+            <p className="mt-4 text-sm text-rose-700">
+              {auction.pedigree_error ?? "Pedigree processing failed."}
+            </p>
+          ) : pedigreePreview ? (
+            <div className="mt-4 space-y-4">
+              <div className="grid gap-4 md:grid-cols-3">
+                {[
+                  { label: "Subject", bird: pedigreePreview.subject },
+                  { label: "Father", bird: pedigreePreview.father },
+                  { label: "Mother", bird: pedigreePreview.mother }
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-2xl border border-neutral-200 bg-white p-4 text-sm text-neutral-700"
+                  >
+                    <p className="text-xs uppercase tracking-wide text-neutral-400">{item.label}</p>
+                    <p className="mt-2 font-semibold text-neutral-900">{item.bird?.name ?? "Unknown"}</p>
+                    <p className="mt-1 text-neutral-500">{item.bird?.ring_number ?? "No ring number"}</p>
+                    <p className="mt-1 text-neutral-500">{item.bird?.color ?? "Color unknown"}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-[0.65fr_1.35fr]">
+                <div className="rounded-2xl border border-neutral-200 bg-white p-4 text-sm text-neutral-700">
+                  <p className="text-xs uppercase tracking-wide text-neutral-400">Extraction</p>
+                  <p className="mt-2 font-semibold text-neutral-900">
+                    Confidence {Math.round(pedigreePreview.confidence * 100)}%
+                  </p>
+                  <p className="mt-1 text-neutral-500">
+                    Language {pedigreePreview.source_language ?? "Unknown"}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-neutral-200 bg-white p-4 text-sm text-neutral-700">
+                  <p className="text-xs uppercase tracking-wide text-neutral-400">Summary</p>
+                  {auction.pedigree_info ? (
+                    <pre className="mt-2 whitespace-pre-wrap font-sans text-sm text-neutral-700">
+                      {auction.pedigree_info}
+                    </pre>
+                  ) : (
+                    <p className="mt-2 text-neutral-500">No summary available.</p>
+                  )}
+                  {pedigreePreview.notes.length > 0 ? (
+                    <p className="mt-3 text-xs text-neutral-500">
+                      Notes: {pedigreePreview.notes.join(" | ")}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+
+              {auction.pedigree_pdf_url ? (
+                <iframe
+                  src={auction.pedigree_pdf_url}
+                  title="Pedigree PDF"
+                  className="h-[560px] w-full rounded-2xl border border-neutral-200 bg-white"
+                />
+              ) : null}
+            </div>
+          ) : auction.pedigree_source_url ? (
+            <p className="mt-4 text-sm text-neutral-500">
+              A pedigree source file is attached, but no AI extraction result is available yet.
+            </p>
+          ) : (
+            <p className="mt-4 text-sm text-neutral-500">No pedigree has been uploaded for this auction.</p>
+          )}
         </div>
 
         <div className="rounded-3xl border border-white/60 bg-white/85 p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)] backdrop-blur">

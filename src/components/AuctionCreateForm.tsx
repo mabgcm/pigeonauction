@@ -5,6 +5,7 @@ import { addDoc, collection, serverTimestamp, updateDoc } from "firebase/firesto
 import { requireDb } from "@/lib/db";
 import { useAuth } from "@/components/AuthProvider";
 import { getUserProfile } from "@/lib/users";
+import { processPedigreeUpload } from "@/lib/functions";
 import { getStorageClient } from "@/lib/storage";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
@@ -103,61 +104,88 @@ export default function AuctionCreateForm() {
 
     setSubmitting(true);
     setStatus(null);
-    const db = requireDb();
 
-    const auctionRef = await addDoc(collection(db, "auctions"), {
-      seller_id: user.uid,
-      pigeon_name: pigeonName.trim(),
-      description: description.trim(),
-      pedigree_info: "",
-      pigeon_photos: fallbackPhotos,
-      starting_price: startPrice,
-      current_price: startPrice,
-      bid_count: 0,
-      auction_start: now.toISOString(),
-      auction_end: end.toISOString(),
-      status: "pending",
-      created_at: serverTimestamp()
-    });
+    try {
+      const db = requireDb();
+      const storage = photoFiles.length > 0 || pedigreeFile ? getStorageClient() : null;
 
-    if (photoFiles.length > 0) {
-      const storage = getStorageClient();
-      if (!storage) {
-        setStatus("Storage is not available in this environment.");
-        setSubmitting(false);
-        return;
+      if ((photoFiles.length > 0 || pedigreeFile) && !storage) {
+        throw new Error("Storage is not available in this environment.");
       }
-      const uploads = await Promise.all(
-        photoFiles.map(async (file, index) => {
-          const safeName = file.name.replace(/\s+/g, "-");
-          const storageRef = ref(storage, `pigeons/${user.uid}/${auctionRef.id}/${index}-${safeName}`);
-          await uploadBytes(storageRef, file);
-          return getDownloadURL(storageRef);
-        })
-      );
-      await updateDoc(auctionRef, { pigeon_photos: uploads });
-    }
 
-    if (pedigreeFile) {
-      const storage = getStorageClient();
-      if (!storage) {
-        setStatus("Storage is not available in this environment.");
-        setSubmitting(false);
-        return;
+      const auctionRef = await addDoc(collection(db, "auctions"), {
+        seller_id: user.uid,
+        pigeon_name: pigeonName.trim(),
+        description: description.trim(),
+        pedigree_info: "",
+        pedigree_status: pedigreeFile ? "processing" : "idle",
+        pigeon_photos: fallbackPhotos,
+        starting_price: startPrice,
+        current_price: startPrice,
+        bid_count: 0,
+        auction_start: now.toISOString(),
+        auction_end: end.toISOString(),
+        status: "pending",
+        created_at: serverTimestamp()
+      });
+
+      if (photoFiles.length > 0 && storage) {
+        const uploads = await Promise.all(
+          photoFiles.map(async (file, index) => {
+            const safeName = file.name.replace(/\s+/g, "-");
+            const storageRef = ref(storage, `pigeons/${user.uid}/${auctionRef.id}/${index}-${safeName}`);
+            await uploadBytes(storageRef, file);
+            return getDownloadURL(storageRef);
+          })
+        );
+        await updateDoc(auctionRef, { pigeon_photos: uploads });
       }
-      const safeName = pedigreeFile.name.replace(/\s+/g, "-");
-      const pedigreeRef = ref(storage, `pedigree/${user.uid}/${auctionRef.id}/${safeName}`);
-      await uploadBytes(pedigreeRef, pedigreeFile);
-      const pedigreeUrl = await getDownloadURL(pedigreeRef);
-      await updateDoc(auctionRef, { pedigree_info: pedigreeUrl });
-    }
 
-    setSubmitting(false);
-    setStatus("Auction created and submitted for approval.");
-    setPigeonName("");
-    setDescription("");
-    setPedigreeFile(null);
-    setPhotoFiles([]);
+      if (pedigreeFile && storage) {
+        if (!pedigreeFile.type.startsWith("image/")) {
+          throw new Error("Pedigree generator currently supports image uploads only.");
+        }
+
+        const safeName = pedigreeFile.name.replace(/\s+/g, "-");
+        const pedigreeStorageRef = ref(storage, `pedigrees/originals/${user.uid}/${auctionRef.id}/${safeName}`);
+        await uploadBytes(pedigreeStorageRef, pedigreeFile, {
+          contentType: pedigreeFile.type
+        });
+        const sourceUrl = await getDownloadURL(pedigreeStorageRef);
+
+        await updateDoc(auctionRef, {
+          pedigree_source_url: sourceUrl,
+          pedigree_source_path: pedigreeStorageRef.fullPath,
+          pedigree_status: "processing"
+        });
+
+        try {
+          await processPedigreeUpload({
+            auctionId: auctionRef.id,
+            storagePath: pedigreeStorageRef.fullPath,
+            sourceUrl,
+            fileName: pedigreeFile.name,
+            contentType: pedigreeFile.type,
+            pigeonName: pigeonName.trim()
+          });
+          setStatus("Auction created, pedigree extracted, and PDF generated.");
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Pedigree processing failed.";
+          setStatus(`Auction created, but pedigree processing failed: ${message}`);
+        }
+      } else {
+        setStatus("Auction created and submitted for approval.");
+      }
+
+      setPigeonName("");
+      setDescription("");
+      setPedigreeFile(null);
+      setPhotoFiles([]);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to create auction.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -215,13 +243,16 @@ export default function AuctionCreateForm() {
           />
         </label>
         <label className="text-xs uppercase tracking-wide text-neutral-500 md:col-span-2">
-          Pedigree file (optional)
+          Pedigree photo (optional)
           <input
             type="file"
-            accept=".pdf,image/*"
+            accept="image/*"
             onChange={(event) => setPedigreeFile(event.target.files?.[0] ?? null)}
             className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
           />
+          <span className="text-xs text-neutral-500">
+            Upload a pedigree image and the AI will extract lineage, save reusable pigeon records, and build a PDF.
+          </span>
         </label>
         <label className="text-xs uppercase tracking-wide text-neutral-500 md:col-span-2">
           Pigeon photos

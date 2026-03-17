@@ -4,6 +4,7 @@ import Providers from "@/components/Providers";
 import SiteHeader from "@/components/SiteHeader";
 import MobileTabBar from "@/components/MobileTabBar";
 import { Fraunces, Space_Grotesk } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <SiteHeader />
           <div className="min-h-[100svh] pb-24 md:pb-0">{children}</div>
           <MobileTabBar />
+          <Analytics />
         </Providers>
       </body>
     </html>
