@@ -1,36 +1,54 @@
-import { getFunctions, httpsCallable, type Functions } from "firebase/functions";
-import { getFirebaseApp } from "@/lib/firebase";
+import { getAuthClient } from "@/lib/auth";
 import type { ProcessPedigreeRequest, ProcessPedigreeResponse } from "@/types/pedigree";
 
-export function getFunctionsClient(): Functions | null {
-  const app = getFirebaseApp();
-  if (!app) return null;
-  return getFunctions(app, "us-central1");
+function getPedigreeEndpointUrl() {
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  if (!projectId) {
+    throw new Error("NEXT_PUBLIC_FIREBASE_PROJECT_ID is not configured.");
+  }
+
+  return `https://us-central1-${projectId}.cloudfunctions.net/processPedigreeUpload`;
 }
 
 export async function processPedigreeUpload(payload: ProcessPedigreeRequest) {
-  const functions = getFunctionsClient();
-  if (!functions) {
-    throw new Error("Functions are not available in this environment.");
+  const auth = getAuthClient();
+  const currentUser = auth?.currentUser;
+  if (!currentUser) {
+    throw new Error("Sign in before generating a pedigree.");
   }
 
-  const callable = httpsCallable<ProcessPedigreeRequest, ProcessPedigreeResponse>(
-    functions,
-    "processPedigreeUpload"
-  );
+  const idToken = await currentUser.getIdToken();
+  const response = await fetch(getPedigreeEndpointUrl(), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${idToken}`
+    },
+    body: JSON.stringify(payload)
+  });
+
+  let data: Partial<ProcessPedigreeResponse> & {
+    error?: string;
+    code?: string;
+    details?: unknown;
+  };
+
   try {
-    const result = await callable(payload);
-    return result.data;
+    data = (await response.json()) as typeof data;
   } catch (error: unknown) {
-    const maybeFirebaseError = error as { code?: string; message?: string; details?: unknown };
-    const details =
-      typeof maybeFirebaseError.details === "string"
-        ? maybeFirebaseError.details
-        : maybeFirebaseError.details
-          ? JSON.stringify(maybeFirebaseError.details)
-          : "";
-
-    const parts = [maybeFirebaseError.code, maybeFirebaseError.message, details].filter(Boolean);
-    throw new Error(parts.join(" | ") || "Pedigree function call failed.");
+    throw new Error(error instanceof Error ? error.message : "Pedigree function returned invalid JSON.");
   }
+
+  if (!response.ok) {
+    const details =
+      typeof data.details === "string"
+        ? data.details
+        : data.details
+          ? JSON.stringify(data.details)
+          : "";
+    const parts = [data.code, data.error, details].filter(Boolean);
+    throw new Error(parts.join(" | ") || `Pedigree request failed with status ${response.status}.`);
+  }
+
+  return data as ProcessPedigreeResponse;
 }

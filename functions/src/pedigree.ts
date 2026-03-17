@@ -3,9 +3,10 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
+import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
-import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { onRequest, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 
 const OPENAI_API_KEY = defineSecret("OPENAI_API_KEY");
@@ -354,21 +355,8 @@ async function generatePedigreePdf(extraction: PedigreeExtraction, summary: stri
   return Buffer.from(await pdf.save());
 }
 
-export const processPedigreeUpload = onCall(
-  {
-    region: "us-central1",
-    timeoutSeconds: 300,
-    memory: "1GiB",
-    cors: true,
-    invoker: "public",
-    secrets: [OPENAI_API_KEY]
-  },
-  async (request) => {
-    if (!request.auth?.uid) {
-      throw new HttpsError("unauthenticated", "Sign in before generating a pedigree.");
-    }
-
-    const payload = processPedigreeRequestSchema.parse(request.data);
+async function runPedigreeProcessing(uid: string, requestData: unknown) {
+    const payload = processPedigreeRequestSchema.parse(requestData);
     if (!payload.contentType.startsWith("image/")) {
       throw new HttpsError("invalid-argument", "Only image pedigree uploads are supported.");
     }
@@ -383,7 +371,7 @@ export const processPedigreeUpload = onCall(
     }
 
     const auction = auctionSnap.data() as { seller_id?: string; pigeon_name?: string };
-    if (auction.seller_id !== request.auth.uid) {
+    if (auction.seller_id !== uid) {
       throw new HttpsError("permission-denied", "You can only process your own auctions.");
     }
 
@@ -407,7 +395,7 @@ export const processPedigreeUpload = onCall(
     await Promise.all([
       jobRef.set({
         auction_id: payload.auctionId,
-        user_id: request.auth.uid,
+        user_id: uid,
         status: "processing",
         source_path: payload.storagePath,
         created_at: now,
@@ -524,7 +512,7 @@ export const processPedigreeUpload = onCall(
 
       const summary = buildPedigreeSummary(normalizedExtraction);
       const pdfBytes = await generatePedigreePdf(normalizedExtraction, summary);
-      const pdfPath = `pedigrees/pdfs/${request.auth.uid}/${payload.auctionId}/${pedigreeRef.id}.pdf`;
+      const pdfPath = `pedigrees/pdfs/${uid}/${payload.auctionId}/${pedigreeRef.id}.pdf`;
       const pdfToken = randomUUID();
 
       await bucket.file(pdfPath).save(pdfBytes, {
@@ -542,7 +530,7 @@ export const processPedigreeUpload = onCall(
       await Promise.all([
         documentRef.set({
           auction_id: payload.auctionId,
-          user_id: request.auth.uid,
+          user_id: uid,
           source_url: payload.sourceUrl,
           source_path: payload.storagePath,
           file_name: payload.fileName,
@@ -557,7 +545,7 @@ export const processPedigreeUpload = onCall(
         }),
         pedigreeRef.set({
           auction_id: payload.auctionId,
-          user_id: request.auth.uid,
+          user_id: uid,
           subject_pigeon_id: stored.get("subject")?.id ?? null,
           slot_pigeon_ids: Object.fromEntries(
             slots.map((slot) => [slot, stored.get(slot)?.id ?? null])
@@ -630,6 +618,64 @@ export const processPedigreeUpload = onCall(
       ]);
 
       throw new HttpsError("internal", message);
+    }
+}
+
+export const processPedigreeUpload = onRequest(
+  {
+    region: "us-central1",
+    timeoutSeconds: 300,
+    memory: "1GiB",
+    cors: true,
+    invoker: "public",
+    secrets: [OPENAI_API_KEY]
+  },
+  async (request, response) => {
+    if (request.method === "OPTIONS") {
+      response.status(204).send("");
+      return;
+    }
+
+    if (request.method !== "POST") {
+      response.status(405).json({ error: "Method not allowed." });
+      return;
+    }
+
+    const authHeader = request.get("authorization") ?? "";
+    const match = authHeader.match(/^Bearer\s+(.+)$/i);
+
+    if (!match) {
+      response.status(401).json({ error: "Missing Firebase ID token.", code: "unauthenticated" });
+      return;
+    }
+
+    try {
+      const decoded = await getAuth().verifyIdToken(match[1]);
+      const result = await runPedigreeProcessing(decoded.uid, request.body);
+      response.status(200).json(result);
+    } catch (error) {
+      if (error instanceof HttpsError) {
+        response.status(error.httpErrorCode.status).json({
+          error: error.message,
+          code: error.code
+        });
+        return;
+      }
+
+      if (error instanceof z.ZodError) {
+        response.status(400).json({
+          error: "Invalid request payload.",
+          code: "invalid-argument",
+          details: error.flatten()
+        });
+        return;
+      }
+
+      const message = error instanceof Error ? error.message : "Pedigree processing failed.";
+      response.status(500).json({
+        error: message,
+        code: "internal"
+      });
     }
   }
 );
