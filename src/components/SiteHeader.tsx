@@ -54,7 +54,7 @@ export default function SiteHeader() {
             </Link>
             {isAdmin && (
               <Link href="/admin" className="hover:text-neutral-900">
-                Admin
+                Adminn
               </Link>
             )}
           </nav>
