@@ -18,6 +18,19 @@ export async function processPedigreeUpload(payload: ProcessPedigreeRequest) {
     functions,
     "processPedigreeUpload"
   );
-  const result = await callable(payload);
-  return result.data;
+  try {
+    const result = await callable(payload);
+    return result.data;
+  } catch (error: unknown) {
+    const maybeFirebaseError = error as { code?: string; message?: string; details?: unknown };
+    const details =
+      typeof maybeFirebaseError.details === "string"
+        ? maybeFirebaseError.details
+        : maybeFirebaseError.details
+          ? JSON.stringify(maybeFirebaseError.details)
+          : "";
+
+    const parts = [maybeFirebaseError.code, maybeFirebaseError.message, details].filter(Boolean);
+    throw new Error(parts.join(" | ") || "Pedigree function call failed.");
+  }
 }

@@ -359,6 +359,8 @@ export const processPedigreeUpload = onCall(
     region: "us-central1",
     timeoutSeconds: 300,
     memory: "1GiB",
+    cors: true,
+    invoker: "public",
     secrets: [OPENAI_API_KEY]
   },
   async (request) => {
