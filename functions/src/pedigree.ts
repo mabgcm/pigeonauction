@@ -94,6 +94,15 @@ function makeDownloadUrl(bucketName: string, path: string, token: string) {
   return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(path)}?alt=media&token=${token}`;
 }
 
+function setCorsHeaders(response: {
+  set: (name: string, value: string) => unknown;
+}) {
+  response.set("Access-Control-Allow-Origin", "https://pigeonauction.vercel.app");
+  response.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  response.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  response.set("Access-Control-Max-Age", "3600");
+}
+
 function summarizeBird(label: string, bird: PedigreeBird | null | undefined) {
   if (!bird) return `${label}: Unknown`;
   const segments = [bird.name, bird.ring_number, bird.color].filter(Boolean);
@@ -631,6 +640,8 @@ export const processPedigreeUpload = onRequest(
     secrets: [OPENAI_API_KEY]
   },
   async (request, response) => {
+    setCorsHeaders(response);
+
     if (request.method === "OPTIONS") {
       response.status(204).send("");
       return;
