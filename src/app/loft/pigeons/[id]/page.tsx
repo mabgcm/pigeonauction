@@ -99,7 +99,7 @@ export default function LoftPigeonPage({ params }: { params: { id: string } }) {
         <h1 className="mt-2 text-4xl font-semibold text-neutral-900">{pigeon?.ring_number ?? "Loft Pigeon"}</h1>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)_520px]">
+      <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
         <LoftSidebar
           entries={filteredEntries}
           selectedId={params.id}
@@ -110,85 +110,87 @@ export default function LoftPigeonPage({ params }: { params: { id: string } }) {
           onAdd={() => setCreateOpen(true)}
         />
 
-        <section className="rounded-3xl border border-white/60 bg-white/90 p-6 shadow-[0_16px_40px_rgba(15,23,42,0.08)]">
-          {error ? (
-            <p className="text-sm text-rose-700">{error}</p>
-          ) : pigeon && entry ? (
-            <>
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-neutral-400">Basic Information</p>
-                  <h2 className="mt-2 text-2xl font-semibold text-neutral-900">{pigeon.name || pigeon.ring_number}</h2>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                      entry.status === "active" ? "bg-emerald-100 text-emerald-700" : "bg-neutral-200 text-neutral-600"
-                    }`}
-                  >
-                    {entry.status}
-                  </span>
-                  <Link
-                    href={`/auctions/new?pigeonId=${params.id}`}
-                    className="rounded-2xl bg-[#1e3a8a] px-4 py-2 text-sm font-semibold text-white"
-                  >
-                    List in Auction
-                  </Link>
-                </div>
-              </div>
-
-              <div className="mt-6 grid gap-6 xl:grid-cols-[0.6fr_1fr]">
-                <div className="rounded-3xl border border-neutral-200 bg-[linear-gradient(180deg,#f8fafc,#eef2ff)] p-5">
-                  <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-neutral-300 bg-white">
-                    {pigeon.photo_url ? (
-                      <img src={pigeon.photo_url} alt={pigeon.ring_number} className="h-full w-full rounded-2xl object-cover" />
-                    ) : (
-                      <div className="text-center text-neutral-400">
-                        <div className="text-6xl">🕊️</div>
-                        <p className="mt-3 text-sm">Add a photo URL to display a pigeon image.</p>
-                      </div>
-                    )}
+        <div className="space-y-6">
+          <section className="rounded-3xl border border-white/60 bg-white/90 p-6 shadow-[0_16px_40px_rgba(15,23,42,0.08)]">
+            {error ? (
+              <p className="text-sm text-rose-700">{error}</p>
+            ) : pigeon && entry ? (
+              <>
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-[0.2em] text-neutral-400">Basic Information</p>
+                    <h2 className="mt-2 text-2xl font-semibold text-neutral-900">{pigeon.name || pigeon.ring_number}</h2>
                   </div>
-                  <div className="mt-5 flex flex-wrap gap-2">
-                    {entry.categories.map((category) => (
-                      <span
-                        key={category}
-                        className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-neutral-700"
-                      >
-                        {category}
-                      </span>
-                    ))}
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                        entry.status === "active" ? "bg-emerald-100 text-emerald-700" : "bg-neutral-200 text-neutral-600"
+                      }`}
+                    >
+                      {entry.status}
+                    </span>
+                    <Link
+                      href={`/auctions/new?pigeonId=${params.id}`}
+                      className="rounded-2xl bg-[#1e3a8a] px-4 py-2 text-sm font-semibold text-white"
+                    >
+                      List in Auction
+                    </Link>
                   </div>
                 </div>
 
-                <LoftPigeonForm
-                  mode="edit"
-                  initialPigeon={pigeon}
-                  initialEntry={entry}
-                  categoryOptions={categoryOptions}
-                  onSubmit={async (values) => {
-                    await updateLoftPigeon(user.uid, params.id, values);
-                    const [nextData, nextCategories] = await Promise.all([
-                      getLoftPigeon(params.id),
-                      getExistingCategories(user.uid)
-                    ]);
-                    if (nextData) {
-                      setPigeon(nextData.pigeon);
-                      setEntry(nextData.entry);
-                      const nextPedigree = await getPedigreeNode(params.id);
-                      setPedigree(nextPedigree);
-                    }
-                    setCategoryOptions(nextCategories);
-                  }}
-                />
-              </div>
-            </>
-          ) : (
-            <p className="text-sm text-neutral-500">Loading loft pigeon...</p>
-          )}
-        </section>
+                <div className="mt-6 grid gap-6 xl:grid-cols-[0.6fr_1fr]">
+                  <div className="rounded-3xl border border-neutral-200 bg-[linear-gradient(180deg,#f8fafc,#eef2ff)] p-5">
+                    <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-neutral-300 bg-white">
+                      {pigeon.photo_url ? (
+                        <img src={pigeon.photo_url} alt={pigeon.ring_number} className="h-full w-full rounded-2xl object-cover" />
+                      ) : (
+                        <div className="text-center text-neutral-400">
+                          <div className="text-6xl">🕊️</div>
+                          <p className="mt-3 text-sm">Add a photo URL to display a pigeon image.</p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-5 flex flex-wrap gap-2">
+                      {entry.categories.map((category) => (
+                        <span
+                          key={category}
+                          className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-neutral-700"
+                        >
+                          {category}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
 
-        <FamilyTreePanel node={pedigree} />
+                  <LoftPigeonForm
+                    mode="edit"
+                    initialPigeon={pigeon}
+                    initialEntry={entry}
+                    categoryOptions={categoryOptions}
+                    onSubmit={async (values) => {
+                      await updateLoftPigeon(user.uid, params.id, values);
+                      const [nextData, nextCategories] = await Promise.all([
+                        getLoftPigeon(params.id),
+                        getExistingCategories(user.uid)
+                      ]);
+                      if (nextData) {
+                        setPigeon(nextData.pigeon);
+                        setEntry(nextData.entry);
+                        const nextPedigree = await getPedigreeNode(params.id);
+                        setPedigree(nextPedigree);
+                      }
+                      setCategoryOptions(nextCategories);
+                    }}
+                  />
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-neutral-500">Loading loft pigeon...</p>
+            )}
+          </section>
+
+          <FamilyTreePanel node={pedigree} />
+        </div>
       </div>
 
       {createOpen ? (
